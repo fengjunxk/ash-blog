@@ -9,7 +9,7 @@ export const SITE = {
 	/** 站点标题（浏览器 tab、OG、RSS） */
 	title: '灰羽 · Ash',
 	/** 一句话签名 */
-	tagline: '一只有点丧、但很温柔的技术猫',
+	tagline: '一个有点内向 但愿意听你讲话的人',
 	/** 站点描述，用于 SEO */
 	description: '灰羽的个人博客：前端工程、Cloudflare 边缘部署、设计随笔，以及一只爱睡觉的猫。',
 	/** 部署后的正式域名（务必带 https:// 且结尾没有斜杠）——影响 RSS / sitemap / OG 绝对地址 */
@@ -20,7 +20,7 @@ export const SITE = {
 } as const;
 
 export const AUTHOR = {
-	name: 'xk',
+	name: '封君',
 	nameZh: '徐氏凯',
 	title: '开发者/学习者',
 	bio: '',
@@ -96,7 +96,7 @@ export const FEATURES = {
 		theme: 'preferred_color_scheme',
 	},
 	/**
-	 * 匿名留言板：填昵称 + 内容即可，无需登录。
+	 * 匿名留言板：填昵称 + 内容即可，无需登录。0
 	 * 后端是 Cloudflare Pages Functions + KV（见 functions/api/guestbook/）。
 	 * 需要：给 Pages 项目绑定名为 BLOG_KV 的 KV 命名空间
 	 * 可选：环境变量 GUESTBOOK_ADMIN_PASSWORD（管理密码，可隐藏任意留言）
