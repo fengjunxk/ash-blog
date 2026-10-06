@@ -10,9 +10,6 @@ NODE_VERSION = "22"
 # 浏览量 / 点赞用的 KV 命名空间。
 # 先执行：pnpm cf:kv:create
 # 然后把输出的 id 填到下面（Dashboard 部署则改在 Settings → Functions 里绑定）
-[[kv_namespaces]]
-binding = "BLOG_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 
 # 需要 SSR（`pnpm build:ssr` 产出 Worker 形态）时改用它：
 # [build]
