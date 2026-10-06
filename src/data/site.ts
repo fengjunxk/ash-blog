@@ -20,14 +20,14 @@ export const SITE = {
 } as const;
 
 export const AUTHOR = {
-	name: 'Ash',
-	nameZh: '灰羽',
-	title: '前端工程师 / 猫奴',
-	bio: '写着写着就天亮了。喜欢把界面做得柔和一点，把代码写得干净一点。',
-	location: '杭州',
+	name: 'xk',
+	nameZh: '徐氏凯',
+	title: '开发者/学习者',
+	bio: '',
+	location: '重庆',
 	/** 头像：可以把图片放到 public/ 下再改这里；留空则用内置的猫猫占位头像 */
-	avatar: '',
-	email: 'hello@example.com',
+	avatar: '我喻我以长青 我拥此春待亭亭',
+	email: '2028551755@qq.com',
 } as const;
 
 export const NAV: NavItem[] = [
