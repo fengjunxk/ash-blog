@@ -1,0 +1,5 @@
+# pnpm 配置：允许这些依赖执行安装脚本（Astro 构建链 / Cloudflare 本地模拟需要）
+allowBuilds:
+  esbuild: true
+  workerd: true
+  sharp: true

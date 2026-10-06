@@ -1,0 +1,128 @@
+---
+/** 写作热力图：近 N 天的产出（按字数着色），纯 SSR 渲染 + CSS */
+interface Props {
+	data: { date: string; words: number; count: number }[];
+	weeks?: number;
+}
+const { data } = Astro.props;
+
+const level = (words: number) => {
+	if (words === 0) return 0;
+	if (words < 300) return 1;
+	if (words < 800) return 2;
+	if (words < 1500) return 3;
+	return 4;
+};
+
+// 补齐到整周（周日开头），方便用列表示“周”
+const first = data[0] ? new Date(data[0].date) : new Date();
+const padStart = first.getDay();
+const cells: ({ date: string; words: number; count: number } | null)[] = [
+	...Array.from({ length: padStart }, () => null),
+	...data,
+];
+const weeks: (typeof cells)[] = [];
+for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+const total = data.reduce((s, d) => s + d.words, 0);
+const activeDays = data.filter((d) => d.words > 0).length;
+const maxWords = Math.max(0, ...data.map((d) => d.words));
+---
+<div class="heatmap">
+	<div class="heatmap__head">
+		<p class="heatmap__title">
+			最近 {data.length} 天写了 <b>{total.toLocaleString('zh-CN')}</b> 字 · 活跃 {activeDays} 天
+		</p>
+		<div class="heatmap__legend" aria-hidden="true">
+			<span>少</span>
+			{[0, 1, 2, 3, 4].map((l) => <i data-level={l}></i>)}
+			<span>多</span>
+		</div>
+	</div>
+	<div class="heatmap__scroll">
+		<div class="heatmap__grid" role="img" aria-label={`写作热力图，最多一天 ${maxWords} 字`}>
+			{weeks.map((week) => (
+				<div class="heatmap__week">
+					{week.map((cell) =>
+						cell ? (
+							<span
+								class="heatmap__cell"
+								data-level={level(cell.words)}
+								title={`${cell.date}：${cell.words} 字 / ${cell.count} 篇`}
+							/>
+						) : (
+							<span class="heatmap__cell heatmap__cell--empty" />
+						),
+					)}
+				</div>
+			))}
+		</div>
+	</div>
+</div>
+
+<style>
+	.heatmap__head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-bottom: 0.75rem;
+	}
+	.heatmap__title {
+		font-size: 0.82rem;
+		color: var(--c-text-mute);
+	}
+	.heatmap__title b {
+		color: var(--c-accent-ink);
+		font-size: 0.95rem;
+	}
+	.heatmap__legend {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.7rem;
+		color: var(--c-text-mute);
+	}
+	.heatmap__legend i {
+		width: 0.68rem;
+		height: 0.68rem;
+		border-radius: 0.2rem;
+		background: var(--c-level, var(--c-surface-2));
+		border: 1px solid color-mix(in oklab, var(--c-border) 70%, transparent);
+	}
+	.heatmap__scroll {
+		overflow-x: auto;
+		padding-bottom: 0.3rem;
+	}
+	.heatmap__grid {
+		display: flex;
+		gap: 3px;
+		min-width: fit-content;
+	}
+	.heatmap__week {
+		display: grid;
+		gap: 3px;
+	}
+	.heatmap__cell {
+		width: 0.68rem;
+		height: 0.68rem;
+		border-radius: 0.2rem;
+		background: var(--c-level, var(--c-surface-2));
+		border: 1px solid color-mix(in oklab, var(--c-border) 60%, transparent);
+		transition: transform 0.16s var(--ease-soft);
+	}
+	.heatmap__cell:hover {
+		transform: scale(1.35);
+		border-color: var(--c-accent);
+	}
+	.heatmap__cell--empty {
+		background: transparent;
+		border-color: transparent;
+	}
+	[data-level='0'] { --c-level: color-mix(in oklab, var(--c-surface-2) 90%, transparent); }
+	[data-level='1'] { --c-level: color-mix(in oklab, var(--c-accent) 26%, var(--c-surface)); }
+	[data-level='2'] { --c-level: color-mix(in oklab, var(--c-accent) 48%, var(--c-surface)); }
+	[data-level='3'] { --c-level: color-mix(in oklab, var(--c-accent) 72%, var(--c-surface)); }
+	[data-level='4'] { --c-level: var(--c-accent); }
+</style>

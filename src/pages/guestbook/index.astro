@@ -1,0 +1,74 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Mascot from '@/components/Mascot.astro';
+import Guestbook from '@/components/Guestbook.astro';
+import { GUESTBOOK_TIPS } from '@/data/about';
+import { FEATURES } from '@/data/site';
+
+const { enabled, pageSize } = FEATURES.guestbook;
+---
+<BaseLayout
+	title="留言板"
+	description="不需要注册，填个昵称就能在灰羽的留言板上留言。"
+	noindex={!enabled}
+>
+	<header class="page-hero wrap">
+		<div class="gb-head">
+			<div>
+				<p class="page-hero__eyebrow"><Icon name="chat" size={13} /> 留言板</p>
+				<h1>随便说点什么</h1>
+				<p>不用注册，也不用留邮箱 —— 起个昵称，把想说的写下来就行。</p>
+			</div>
+			<div class="gb-mascot" aria-hidden="true">
+				<Mascot size={168} floating={false} />
+			</div>
+		</div>
+		<ul class="tips">
+			{GUESTBOOK_TIPS.map((tip) => (
+				<li class="card"><Icon name="info" size={13} /> {tip}</li>
+			))}
+		</ul>
+	</header>
+
+	<div class="wrap gb-body">
+		<Guestbook pageSize={pageSize} />
+	</div>
+</BaseLayout>
+
+<style>
+	.gb-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1.5rem;
+	}
+	.gb-mascot {
+		display: none;
+	}
+	.tips {
+		display: grid;
+		gap: 0.6rem;
+		margin-top: 1.6rem;
+		list-style: none;
+		padding: 0;
+	}
+	.tips li {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.6rem 0.9rem;
+		font-size: 0.84rem;
+		color: var(--c-text-soft);
+	}
+	.gb-body {
+		padding-bottom: 2rem;
+		max-width: 52rem;
+	}
+	@media (min-width: 640px) {
+		.tips { grid-template-columns: repeat(3, 1fr); }
+	}
+	@media (min-width: 900px) {
+		.gb-mascot { display: block; }
+	}
+</style>

@@ -1,0 +1,289 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { getProjects, getPostMetas } from '@/lib/blog';
+import { formatDate } from '@/lib/utils';
+
+const projects = await getProjects();
+const posts = await getPostMetas();
+
+const STATUS_LABEL: Record<string, string> = {
+	active: '在维护',
+	maintained: '已稳定',
+	wip: '开发中',
+	archived: '已归档',
+};
+const STATUS_ICON: Record<string, string> = {
+	active: 'zap',
+	maintained: 'shield',
+	wip: 'loader',
+	archived: 'archive',
+};
+const featured = projects.filter((p) => p.data.featured);
+const rest = projects.filter((p) => !p.data.featured);
+---
+<BaseLayout title="项目" description="灰羽做过的一些开源项目与玩具。">
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="sparkles" size={13} /> 作品集</p>
+		<h1>做过的一些东西</h1>
+		<p>有正经在维护的，也有周末两小时写完就再没打开过的 —— 都放在这里了。</p>
+	</header>
+
+	<div class="wrap">
+		{featured.length > 0 && (
+			<section class="featured">
+				{featured.map((project) => (
+					<article class="proj proj--feature card card-hover" data-reveal>
+						<div class="proj__emoji" aria-hidden="true">{project.data.emoji}</div>
+						<div class="proj__body">
+							<div class="proj__top">
+								<h2 class="proj__title">{project.data.title}</h2>
+								<span class="proj__status" data-status={project.data.status}>
+									<Icon name={STATUS_ICON[project.data.status] ?? 'zap'} size={12} />
+									{STATUS_LABEL[project.data.status]}
+								</span>
+							</div>
+							<p class="proj__tagline">{project.data.tagline}</p>
+							<p class="proj__desc">{project.data.description}</p>
+							<div class="proj__stack">
+								{project.data.stack.map((s) => (
+									<span class="chip">{s}</span>
+								))}
+							</div>
+							<div class="proj__links">
+								{project.data.links.map((link) => (
+									<a class="btn" href={link.href}>
+										<Icon name={link.icon ?? 'external'} size={14} /> {link.label}
+									</a>
+								))}
+								{project.data.stars != null && (
+									<span class="proj__stars">
+										<Icon name="star" size={13} />
+										{typeof project.data.stars === 'number'
+											? project.data.stars.toLocaleString('en-US')
+											: project.data.stars}
+									</span>
+								)}
+							</div>
+						</div>
+					</article>
+				))}
+			</section>
+		)}
+
+		<section class="rest">
+			<h2 class="section-title">其他</h2>
+			<div class="proj-grid">
+				{rest.map((project) => (
+					<article class="proj card card-hover" data-reveal>
+						<div class="proj__head">
+							<span class="proj__emoji proj__emoji--sm" aria-hidden="true">{project.data.emoji}</span>
+							<span class="proj__status" data-status={project.data.status}>
+								{STATUS_LABEL[project.data.status]}
+							</span>
+						</div>
+						<h3 class="proj__title proj__title--sm">{project.data.title}</h3>
+						<p class="proj__tagline">{project.data.tagline}</p>
+						<div class="proj__stack">
+							{project.data.stack.slice(0, 4).map((s) => (
+								<span class="chip">{s}</span>
+							))}
+						</div>
+						<div class="proj__links">
+							{project.data.links.slice(0, 2).map((link) => (
+								<a class="section-link" href={link.href}>
+									{link.label} <Icon name="arrowUpRight" size={12} />
+								</a>
+							))}
+						</div>
+						<p class="proj__date">{formatDate(project.data.published, 'iso')}</p>
+					</article>
+				))}
+			</div>
+		</section>
+
+		{projects.length === 0 && (
+			<p class="footnote">还没有项目，去 <code>src/content/projects/</code> 里加一个吧。</p>
+		)}
+
+		<section class="cta-mini card">
+			<div>
+				<h2>也有在写代码以外的东西</h2>
+				<p>如果想看过程记录，文章列表里散落着不少笔记。</p>
+			</div>
+			<a class="btn btn-accent" href="/blog/"><Icon name="book" size={15} /> 去看文章</a>
+		</section>
+
+		<p class="footnote">
+			<Icon name="info" size={13} /> 目前 {projects.length} 个项目，{posts.length} 篇相关记录。
+		</p>
+	</div>
+</BaseLayout>
+
+<style>
+	.featured {
+		display: grid;
+		gap: 1rem;
+	}
+	.proj--feature {
+		display: grid;
+		gap: 1.2rem;
+		padding: 1.5rem;
+	}
+	.proj__emoji {
+		display: grid;
+		place-items: center;
+		width: 4rem;
+		height: 4rem;
+		border-radius: var(--radius-md);
+		background: linear-gradient(150deg, var(--c-accent-soft), var(--c-surface-2));
+		border: 1px solid var(--c-border);
+		font-size: 1.7rem;
+	}
+	.proj__emoji--sm {
+		width: 2.4rem;
+		height: 2.4rem;
+		font-size: 1.1rem;
+		border-radius: 0.7rem;
+	}
+	.proj__top,
+	.proj__head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+	}
+	.proj__title {
+		font-family: var(--font-display);
+		font-size: 1.4rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+	.proj__title--sm {
+		font-size: 1.06rem;
+		margin-top: 0.6rem;
+	}
+	.proj__status {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.2rem 0.55rem;
+		border-radius: 999px;
+		font-size: 0.7rem;
+		font-weight: 700;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface-2);
+		color: var(--c-text-mute);
+		white-space: nowrap;
+	}
+	.proj__status[data-status='active'] {
+		background: color-mix(in oklab, var(--color-sage) 18%, transparent);
+		border-color: color-mix(in oklab, var(--color-sage) 45%, transparent);
+		color: oklch(0.45 0.08 155);
+	}
+	.proj__status[data-status='wip'] {
+		background: var(--c-accent-soft);
+		border-color: color-mix(in oklab, var(--c-accent) 40%, transparent);
+		color: var(--c-accent-ink);
+	}
+	.proj__tagline {
+		margin-top: 0.5rem;
+		font-size: 0.92rem;
+		font-weight: 600;
+		color: var(--c-accent-ink);
+	}
+	.proj__desc {
+		margin-top: 0.6rem;
+		font-size: 0.88rem;
+		line-height: 1.8;
+		color: var(--c-text-soft);
+	}
+	.proj__stack {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		margin-top: 0.9rem;
+	}
+	.proj__links {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.8rem;
+		margin-top: 1.1rem;
+	}
+	.proj__stars {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.78rem;
+		color: var(--c-text-mute);
+	}
+	.rest {
+		margin-top: 2.8rem;
+	}
+	.proj-grid {
+		display: grid;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+	.proj-grid .proj {
+		display: flex;
+		flex-direction: column;
+		padding: 1.15rem 1.25rem 1.25rem;
+	}
+	.proj__date {
+		margin-top: auto;
+		padding-top: 1rem;
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.cta-mini {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 1rem;
+		padding: 1.4rem 1.5rem;
+		margin-top: 3rem;
+	}
+	.cta-mini h2 {
+		font-family: var(--font-display);
+		font-size: 1.2rem;
+		font-weight: 700;
+	}
+	.cta-mini p {
+		margin-top: 0.3rem;
+		font-size: 0.85rem;
+		color: var(--c-text-mute);
+	}
+	.footnote {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 2rem;
+		font-size: 0.8rem;
+		color: var(--c-text-mute);
+	}
+	.footnote code {
+		font-family: var(--font-mono);
+		font-size: 0.78em;
+		padding: 0.1em 0.35em;
+		border-radius: 0.35rem;
+		background: var(--c-surface-2);
+	}
+	@media (min-width: 760px) {
+		.proj--feature {
+			grid-template-columns: auto 1fr;
+			gap: 1.6rem;
+		}
+		.proj-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (min-width: 1100px) {
+		.proj-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+</style>

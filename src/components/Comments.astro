@@ -1,0 +1,123 @@
+---
+/**
+ * Giscus 评论（基于 GitHub Discussions，无需自建后端）
+ * 开启步骤：
+ *  1. 仓库开启 Discussions，装 https://github.com/apps/giscus
+ *  2. 到 https://giscus.app 生成配置，把 repo / repoId / categoryId 填进 src/data/site.ts
+ *  3. FEATURES.comments.enabled 改为 true
+ */
+import Icon from './Icon.astro';
+import { FEATURES } from '@/data/site';
+
+const c = FEATURES.comments;
+const ready = c.enabled && c.repo && c.repoId;
+---
+{
+	ready ? (
+		<section class="comments" id="comments" data-pagefind-ignore>
+			<h2 class="comments__title">
+				<Icon name="chat" size={17} /> 说点什么
+			</h2>
+			<p class="comments__tip">评论由 GitHub Discussions 提供，登录 GitHub 后即可发言。</p>
+			<div
+				class="giscus"
+				data-repo={c.repo}
+				data-repo-id={c.repoId}
+				data-category={c.category}
+				data-category-id={c.categoryId}
+				data-mapping={c.mapping}
+				data-reactions-enabled={c.reactionsEnabled}
+				data-input-position={c.inputPosition}
+				data-lang={c.lang}
+				data-loading="lazy"
+			/>
+		</section>
+	) : (
+		<section class="comments comments--off" id="comments" data-pagefind-ignore>
+			<p>
+				<Icon name="chat" size={16} />
+				评论区还没开张 —— 想开启的话，把 <code>src/data/site.ts</code> 里
+				<code>FEATURES.comments</code> 的 <code>enabled</code> 设为 <code>true</code> 并填入 giscus 配置即可。
+			</p>
+		</section>
+	)
+}
+
+<style>
+	.comments {
+		margin-top: 3rem;
+		padding-top: 2rem;
+		border-top: 1px solid var(--c-border);
+	}
+	.comments__title {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 1.12rem;
+		font-weight: 700;
+	}
+	.comments__tip {
+		margin-top: 0.4rem;
+		margin-bottom: 1.1rem;
+		font-size: 0.82rem;
+		color: var(--c-text-mute);
+	}
+	.comments--off {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1rem 1.15rem;
+		border: 1px dashed var(--c-border-strong);
+		border-radius: var(--radius-md);
+		background: color-mix(in oklab, var(--c-surface-2) 50%, transparent);
+		font-size: 0.84rem;
+		color: var(--c-text-mute);
+	}
+	.comments--off code {
+		font-family: var(--font-mono);
+		font-size: 0.78em;
+		padding: 0.1em 0.35em;
+		border-radius: 0.35rem;
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+</style>
+
+<script>
+	const holder = document.querySelector<HTMLElement>('.giscus');
+	if (holder) {
+		const theme = () => {
+			const dark = document.documentElement.dataset.theme === 'dark';
+			return dark ? 'https://giscus.app/themes/catppuccin_mocha.css' : 'https://giscus.app/themes/catppuccin_latte.css';
+		};
+		const mount = () => {
+			if (holder.querySelector('iframe') || !holder.dataset.repo) return;
+			const s = document.createElement('script');
+			s.src = 'https://giscus.app/client.js';
+			s.async = true;
+			s.crossOrigin = 'anonymous';
+			const map: Record<string, string> = {
+				repo: 'data-repo',
+				repoId: 'data-repo-id',
+				category: 'data-category',
+				categoryId: 'data-category-id',
+				mapping: 'data-mapping',
+				reactionsEnabled: 'data-reactions-enabled',
+				inputPosition: 'data-input-position',
+				lang: 'data-lang',
+			};
+			for (const attr of Object.values(map)) {
+				const value = holder.getAttribute(attr);
+				if (value) s.setAttribute(attr, value);
+			}
+			s.setAttribute('data-theme', theme());
+			s.setAttribute('data-emit-metadata', '0');
+			holder.appendChild(s);
+		};
+		mount();
+		document.addEventListener('ash:theme', () => {
+			const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+			frame?.contentWindow?.postMessage({ giscus: { setConfig: { theme: theme() } } }, 'https://giscus.app');
+		});
+	}
+</script>

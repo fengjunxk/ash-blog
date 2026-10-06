@@ -1,0 +1,55 @@
+{
+  "name": "ash-blog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "灰羽 Ash — 一只有点丧但很温柔的个人博客（Astro + Tailwind v4 + Cloudflare Pages）",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "clean": "node scripts/clean.mjs",
+    "build": "astro build && node scripts/pagefind.mjs",
+    "build:ssr": "node scripts/build-ssr.mjs",
+    "preview": "astro preview",
+    "serve": "node scripts/serve-dist.mjs",
+    "check": "astro check",
+    "icons": "node scripts/icons.mjs",
+    "gb:seed": "node scripts/seed-guestbook.mjs",
+    "gb:seed:remote": "node scripts/seed-guestbook.mjs --remote",
+    "cf:preview": "wrangler pages dev dist",
+    "cf:deploy": "wrangler pages deploy dist --project-name ash-blog",
+    "cf:kv:create": "wrangler kv namespace create BLOG_KV",
+    "cf:types": "wrangler types"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "latest",
+    "@astrojs/markdown-remark": "^7.3.1",
+    "@astrojs/mdx": "latest",
+    "@astrojs/rss": "latest",
+    "@astrojs/sitemap": "latest",
+    "astro": "latest",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0",
+    "pagefind": "latest",
+    "rehype-autolink-headings": "latest",
+    "rehype-katex": "latest",
+    "rehype-slug": "latest",
+    "remark-gfm": "latest",
+    "remark-math": "latest",
+    "unist-util-visit": "^5.1.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@tailwindcss/vite": "latest",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "latest",
+    "sharp": "latest",
+    "tailwindcss": "latest",
+    "typescript": "~6.0.3",
+    "wrangler": "latest"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

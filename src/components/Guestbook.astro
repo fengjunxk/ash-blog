@@ -1,0 +1,1187 @@
+---
+/**
+ * 匿名留言板：填个昵称 + 内容就能发，不需要登录，别人可以在你的留言下回复。
+ *
+ * 结构：两层楼中楼 —— 顶层「楼层」+ 楼层内的回复。
+ * 回复别人时自动带上「回复 @某某」，点一下能跳到原留言。
+ *
+ * 依赖 Cloudflare Pages Functions（/api/guestbook）与 KV 绑定 BLOG_KV：
+ *   - 没绑 KV 时组件显示「还没接上后端」的提示，页面不会报错
+ *   - 想开人机验证：Pages 环境变量加 TURNSTILE_SECRET_KEY，并设置 PUBLIC_TURNSTILE_SITE_KEY
+ *   - 想能隐藏任意留言：加 GUESTBOOK_ADMIN_PASSWORD，页面上会出现「管理」入口
+ */
+import Icon from './Icon.astro';
+import { FEATURES } from '@/data/site';
+
+interface Props {
+	/** 传给后端的每页楼层数（当前实现一次返回全部） */
+	pageSize?: number;
+	/** 是否允许回复 */
+	allowReply?: boolean;
+}
+const { pageSize = 20, allowReply = FEATURES.guestbook.allowReply } = Astro.props;
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
+const enabled = FEATURES.guestbook.enabled;
+const SORT_KEY = 'ash-guestbook-sort';
+---
+{
+	enabled ? (
+		<section
+			class="gb"
+			id="guestbook"
+			data-gb
+			data-size={String(pageSize)}
+			data-turnstile={turnstileSiteKey}
+			data-allow-reply={allowReply ? '1' : '0'}
+		>
+			<form class="gb-form card" data-gb-form novalidate>
+				<div class="gb-form__row">
+					<label class="gb-field gb-field--name">
+						<span class="gb-field__label">
+							昵称 <b aria-hidden="true">*</b>
+						</span>
+						<input
+							type="text"
+							name="name"
+							maxlength="24"
+							placeholder="随便起一个，比如「路过的猫」"
+							autocomplete="nickname"
+							required
+						/>
+					</label>
+					<div class="gb-field gb-field--hint">
+						<span class="gb-field__label">小提示</span>
+						<p class="gb-hint">
+							无需注册，也不记录 IP 明文。发布后 2 分钟内可以自己删除；
+							回复别人时点留言下面的「回复」就行。
+						</p>
+					</div>
+				</div>
+
+				<label class="gb-field">
+					<span class="gb-field__label">
+						留言 <b aria-hidden="true">*</b>
+						<span class="gb-counter" data-gb-counter>0 / 600</span>
+					</span>
+					<textarea
+						name="message"
+						rows="4"
+						maxlength="600"
+						placeholder="想说什么都可以，技术、吐槽、或者只是打个招呼 ✦"
+						required></textarea>
+				</label>
+
+				<div class="gb-reply" data-gb-reply hidden>
+					<Icon name="quote" size={13} />
+					<span data-gb-reply-hint>正在回复</span>
+					<button type="button" class="gb-reply__clear" data-gb-reply-clear aria-label="取消回复">
+						<Icon name="close" size={12} />
+					</button>
+				</div>
+
+				<!-- 反机器人：正常用户看不见也填不到 -->
+				<div class="gb-hp" aria-hidden="true">
+					<label>
+						网址
+						<input type="text" name="website" tabindex="-1" autocomplete="off" />
+					</label>
+				</div>
+
+				{turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="auto" />}
+
+				<div class="gb-form__foot">
+					<p class="gb-status" data-gb-status role="status" aria-live="polite"></p>
+					<div class="gb-form__actions">
+						<label class="gb-admin" hidden data-gb-admin>
+							<input type="password" name="adminPassword" placeholder="管理密码" autocomplete="off" />
+						</label>
+						<button type="button" class="btn" data-gb-cancel hidden>取消回复</button>
+						<button type="submit" class="btn btn-accent" data-gb-submit>
+							<Icon name="chat" size={15} /> <span data-gb-submit-label>发布留言</span>
+						</button>
+					</div>
+				</div>
+			</form>
+
+			<div class="gb-list-head">
+				<h2 class="gb-list-title">
+					<Icon name="users" size={16} /> 大家的留言
+					<span class="gb-count" data-gb-count>—</span>
+				</h2>
+				<div class="gb-list-tools">
+					<div class="gb-sort" role="group" aria-label="排序">
+						<button type="button" class="gb-tool is-active" data-gb-sort="new" title="最新的楼层在前">
+							<Icon name="flame" size={13} /> 最新
+						</button>
+						<button type="button" class="gb-tool" data-gb-sort="hot" title="回复多的楼层在前">
+							<Icon name="zap" size={13} /> 热闹
+						</button>
+					</div>
+					<button type="button" class="gb-tool" data-gb-refresh title="刷新">
+						<Icon name="loader" size={14} /> 刷新
+					</button>
+					<button type="button" class="gb-tool" data-gb-admin-toggle hidden>
+						<Icon name="lock" size={14} /> 管理
+					</button>
+				</div>
+			</div>
+
+			<div class="gb-list" data-gb-list>
+				<div class="gb-skeleton">
+					<div class="skeleton" style="height:6rem"></div>
+					<div class="skeleton" style="height:6rem"></div>
+					<div class="skeleton" style="height:6rem"></div>
+				</div>
+			</div>
+
+			<div class="gb-more">
+				<button type="button" class="btn" data-gb-more hidden>
+					<Icon name="chevronDown" size={14} /> 加载更早的留言
+				</button>
+			</div>
+		</section>
+	) : (
+		<section class="gb gb--off card">
+			<p>
+				<Icon name="chat" size={16} />
+				留言板已关闭。想打开的话，把 <code>src/data/site.ts</code> 里
+				<code>FEATURES.guestbook.enabled</code> 设为 <code>true</code> 即可。
+			</p>
+		</section>
+	)
+}
+
+<style>
+	.gb {
+		display: grid;
+		gap: 1.6rem;
+	}
+	.gb--off {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1.1rem 1.25rem;
+		font-size: 0.86rem;
+		color: var(--c-text-mute);
+	}
+	.gb--off code {
+		font-family: var(--font-mono);
+		font-size: 0.8em;
+		padding: 0.1em 0.35em;
+		border-radius: 0.35rem;
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+
+	/* —— 发布表单 —— */
+	.gb-form {
+		display: grid;
+		gap: 1rem;
+		padding: 1.25rem 1.3rem 1.35rem;
+	}
+	.gb-form.is-replying {
+		border-color: color-mix(in oklab, var(--c-accent) 45%, transparent);
+		box-shadow: var(--shadow-glow);
+	}
+	.gb-form__row {
+		display: grid;
+		gap: 0.9rem;
+	}
+	.gb-field {
+		display: grid;
+		gap: 0.4rem;
+	}
+	.gb-field__label {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--c-text-soft);
+	}
+	.gb-field__label b {
+		color: var(--c-accent);
+	}
+	.gb-counter {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		font-weight: 400;
+		color: var(--c-text-mute);
+	}
+	.gb-field input,
+	.gb-field textarea {
+		width: 100%;
+		border: 1px solid var(--c-border);
+		border-radius: var(--radius-sm);
+		background: var(--c-bg);
+		color: var(--c-text);
+		font-family: inherit;
+		font-size: 0.9rem;
+		padding: 0.6rem 0.75rem;
+		outline: 0;
+		transition: border-color 0.2s var(--ease-soft), box-shadow 0.2s var(--ease-soft);
+		resize: vertical;
+	}
+	.gb-field textarea {
+		line-height: 1.75;
+		min-height: 6rem;
+	}
+	.gb-field input:focus,
+	.gb-field textarea:focus {
+		border-color: var(--c-accent);
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-accent) 18%, transparent);
+	}
+	.gb-field input::placeholder,
+	.gb-field textarea::placeholder {
+		color: var(--c-text-mute);
+		opacity: 0.75;
+	}
+	.gb-hint {
+		font-size: 0.76rem;
+		line-height: 1.7;
+		color: var(--c-text-mute);
+		padding-top: 0.15rem;
+	}
+	.gb-hp {
+		position: absolute;
+		left: -9999px;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+	}
+	.gb-reply {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in oklab, var(--c-accent) 30%, transparent);
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+		font-size: 0.78rem;
+		width: fit-content;
+		max-width: 100%;
+	}
+	.gb-reply b {
+		font-weight: 600;
+	}
+	.gb-reply__clear {
+		display: grid;
+		place-items: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 0;
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--c-accent) 20%, transparent);
+		color: inherit;
+		cursor: pointer;
+	}
+	.gb-form__foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+	}
+	.gb-form__actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.gb-admin input {
+		width: 9rem;
+		padding: 0.4rem 0.6rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-bg);
+		color: var(--c-text);
+		font-size: 0.78rem;
+		outline: 0;
+	}
+	.gb-status {
+		font-size: 0.8rem;
+		color: var(--c-text-mute);
+		min-height: 1.2rem;
+	}
+	.gb-status[data-tone='ok'] {
+		color: var(--color-sage);
+	}
+	.gb-status[data-tone='error'] {
+		color: oklch(0.58 0.16 25);
+	}
+	.gb-status[data-tone='warn'] {
+		color: oklch(0.66 0.12 70);
+	}
+
+	/* —— 列表头 —— */
+	.gb-list-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+	.gb-list-title {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 1.05rem;
+		font-weight: 700;
+	}
+	.gb-count {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		font-weight: 400;
+		color: var(--c-text-mute);
+	}
+	.gb-list-tools {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+	.gb-sort {
+		display: flex;
+		gap: 2px;
+		padding: 2px;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+	}
+	.gb-tool {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.32rem 0.65rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+		color: var(--c-text-mute);
+		font-size: 0.76rem;
+		cursor: pointer;
+		transition: all 0.2s var(--ease-soft);
+	}
+	.gb-sort .gb-tool {
+		border-color: transparent;
+		background: transparent;
+	}
+	.gb-tool:hover {
+		color: var(--c-accent-ink);
+		border-color: var(--c-accent);
+	}
+	.gb-tool.is-active {
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+		border-color: transparent;
+	}
+	.gb-list {
+		display: grid;
+		gap: 0.85rem;
+	}
+	.gb-skeleton {
+		display: grid;
+		gap: 0.85rem;
+	}
+	.gb-more {
+		display: flex;
+		justify-content: center;
+	}
+	.gb-empty {
+		display: grid;
+		justify-items: center;
+		gap: 0.5rem;
+		padding: 2.4rem 1rem;
+		border: 1px dashed var(--c-border-strong);
+		border-radius: var(--radius-md);
+		color: var(--c-text-mute);
+		font-size: 0.86rem;
+		text-align: center;
+	}
+	@media (min-width: 640px) {
+		.gb-form__row {
+			grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+			align-items: start;
+			gap: 1.4rem;
+		}
+	}
+</style>
+
+<style is:global>
+	/* —— 楼层 —— */
+	.gb-item {
+		position: relative;
+		padding: 1.05rem 1.15rem;
+		transition: border-color 0.25s var(--ease-soft), box-shadow 0.25s var(--ease-soft);
+	}
+	.gb-item.should-float {
+		position: sticky;
+		top: 4.6rem;
+		z-index: 5;
+	}
+	.gb-item:hover {
+		border-color: var(--c-border-strong);
+	}
+	.gb-item.is-hidden {
+		opacity: 0.55;
+		border-style: dashed;
+	}
+	.gb-item.is-flash,
+	.gb-reply-item.is-flash {
+		border-color: var(--c-accent);
+		box-shadow: var(--shadow-glow);
+	}
+	.gb-main {
+		display: flex;
+		gap: 0.85rem;
+	}
+	.gb-avatar {
+		display: grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		flex: none;
+		border-radius: 0.85rem;
+		background: color-mix(in oklab, var(--av) 24%, var(--c-surface));
+		border: 1px solid color-mix(in oklab, var(--av) 40%, transparent);
+		color: color-mix(in oklab, var(--av) 70%, var(--c-text));
+		font-weight: 700;
+		font-size: 1rem;
+		user-select: none;
+	}
+	.gb-avatar--sm {
+		width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 0.6rem;
+		font-size: 0.82rem;
+	}
+	.gb-body {
+		display: grid;
+		gap: 0.4rem;
+		min-width: 0;
+		flex: 1;
+	}
+	.gb-item-head {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.gb-name {
+		font-size: 0.9rem;
+		font-weight: 700;
+	}
+	.gb-op {
+		padding: 0.05rem 0.4rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in oklab, var(--c-accent) 35%, transparent);
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+		font-size: 0.64rem;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+	}
+	.gb-time {
+		font-size: 0.74rem;
+		color: var(--c-text-mute);
+	}
+	.gb-badge {
+		padding: 0.1rem 0.45rem;
+		border-radius: 999px;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+		font-size: 0.68rem;
+		color: var(--c-text-mute);
+	}
+	.gb-message {
+		font-size: 0.92rem;
+		line-height: 1.8;
+		color: var(--c-text-soft);
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+	.gb-mention {
+		color: var(--c-accent-ink);
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.gb-mention:hover {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+	.gb-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-top: 0.15rem;
+	}
+	.gb-act {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		border: 0;
+		background: transparent;
+		padding: 0;
+		font-size: 0.76rem;
+		font-weight: 600;
+		color: var(--c-text-mute);
+		cursor: pointer;
+		transition: color 0.2s var(--ease-soft);
+	}
+	.gb-act:hover {
+		color: var(--c-accent-ink);
+	}
+	.gb-act--danger:hover {
+		color: oklch(0.58 0.16 25);
+	}
+	.gb-act[disabled] {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	/* —— 楼层内的回复 —— */
+	.gb-replies {
+		margin-top: 0.85rem;
+		margin-left: 3.35rem;
+		padding-left: 0.9rem;
+		border-left: 2px solid color-mix(in oklab, var(--c-border-strong) 70%, transparent);
+		display: grid;
+		gap: 0.7rem;
+	}
+	.gb-replies.is-collapsed {
+		display: none;
+	}
+	.gb-reply-item {
+		display: flex;
+		gap: 0.7rem;
+		padding: 0.5rem 0.6rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid transparent;
+		transition: background-color 0.2s var(--ease-soft), border-color 0.25s var(--ease-soft);
+	}
+	.gb-reply-item:hover {
+		background: color-mix(in oklab, var(--c-surface-2) 60%, transparent);
+		border-color: var(--c-border);
+	}
+	.gb-reply-item .gb-message {
+		font-size: 0.88rem;
+	}
+	.gb-replies-toggle {
+		margin-top: 0.7rem;
+		margin-left: 3.35rem;
+		border: 0;
+		background: transparent;
+		padding: 0;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--c-accent-ink);
+		cursor: pointer;
+	}
+	.gb-replies-toggle:hover {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+	.gb-anchor {
+		color: var(--c-text-mute);
+		opacity: 0;
+		transition: opacity 0.2s var(--ease-soft);
+		font-family: var(--font-mono);
+	}
+	.gb-item:hover .gb-anchor,
+	.gb-reply-item:hover .gb-anchor {
+		opacity: 1;
+	}
+	[data-gb] .gb-empty code {
+		font-family: var(--font-mono);
+		font-size: 0.85em;
+		padding: 0.1em 0.35em;
+		border-radius: 0.35rem;
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+	@media (max-width: 520px) {
+		.gb-replies {
+			margin-left: 1.2rem;
+			padding-left: 0.7rem;
+		}
+		.gb-replies-toggle {
+			margin-left: 1.2rem;
+		}
+	}
+</style>
+
+<script>
+	type Reply = {
+		id: string;
+		name: string;
+		message: string;
+		parentId?: string | null;
+		replyToId?: string | null;
+		replyToName?: string | null;
+		createdAt: number;
+		hidden?: boolean;
+	};
+	type Floor = Reply & { replyCount: number; replies: Reply[] };
+
+	const root = document.querySelector<HTMLElement>('[data-gb]');
+	if (root) {
+		const form = root.querySelector<HTMLFormElement>('[data-gb-form]')!;
+		const list = root.querySelector<HTMLElement>('[data-gb-list]')!;
+		const status = root.querySelector<HTMLElement>('[data-gb-status]')!;
+		const countEl = root.querySelector<HTMLElement>('[data-gb-count]')!;
+		const moreBtn = root.querySelector<HTMLButtonElement>('[data-gb-more]')!;
+		const counter = root.querySelector<HTMLElement>('[data-gb-counter]')!;
+		const replyBar = root.querySelector<HTMLElement>('[data-gb-reply]')!;
+		const replyHint = root.querySelector<HTMLElement>('[data-gb-reply-hint]')!;
+		const replyClear = root.querySelector<HTMLButtonElement>('[data-gb-reply-clear]')!;
+		const cancelBtn = root.querySelector<HTMLButtonElement>('[data-gb-cancel]')!;
+		const submitLabel = root.querySelector<HTMLElement>('[data-gb-submit-label]')!;
+		const adminToggle = root.querySelector<HTMLButtonElement>('[data-gb-admin-toggle]')!;
+		const adminBox = root.querySelector<HTMLElement>('[data-gb-admin]')!;
+		const nameInput = form.querySelector<HTMLInputElement>('input[name="name"]')!;
+		const messageInput = form.querySelector<HTMLTextAreaElement>('textarea[name="message"]')!;
+		const honeypot = form.querySelector<HTMLInputElement>('input[name="website"]')!;
+		const adminInput = form.querySelector<HTMLInputElement>('input[name="adminPassword"]')!;
+		const submitBtn = form.querySelector<HTMLButtonElement>('[data-gb-submit]')!;
+
+		const TOKEN_KEY = 'ash-guestbook-tokens';
+		const NAME_KEY = 'ash-guestbook-name';
+		const ADMIN_KEY = 'ash-guestbook-admin';
+		const COLLAPSE_KEY = 'ash-guestbook-collapsed';
+		const allowReply = root.dataset.allowReply === '1';
+		const size = Number(root.dataset.size ?? 20) || 20;
+		const turnstileSiteKey = root.dataset.turnstile ?? '';
+
+		let floors: Floor[] = [];
+		let hasMore = false;
+		let replyTarget: { id: string; name: string; floorName: string } | null = null;
+		let tokens: Record<string, string> = {};
+		let adminPassword = '';
+		let sortMode: 'new' | 'hot' = 'new';
+		let collapsed: Record<string, boolean> = {};
+
+		const ls = {
+			get(key: string) {
+				try {
+					return localStorage.getItem(key) ?? '';
+				} catch {
+					return '';
+				}
+			},
+			set(key: string, value: string) {
+				try {
+					localStorage.setItem(key, value);
+				} catch {}
+			},
+		};
+
+		const parse = <T,>(raw: string, fallback: T): T => {
+			try {
+				return raw ? (JSON.parse(raw) as T) : fallback;
+			} catch {
+				return fallback;
+			}
+		};
+
+		tokens = parse(ls.get(TOKEN_KEY), {} as Record<string, string>);
+		collapsed = parse(ls.get(COLLAPSE_KEY), {} as Record<string, boolean>);
+		adminPassword = ls.get(ADMIN_KEY);
+		sortMode = (ls.get('ash-guestbook-sort') as 'new' | 'hot') || 'new';
+
+		const palette = ['#c9a2a6', '#a49bbd', '#93b0ad', '#c2a888', '#9d9691', '#b58fa0'];
+		const colorOf = (name: string) => {
+			let sum = 0;
+			for (const char of name) sum = (sum + char.codePointAt(0)!) % 997;
+			return palette[sum % palette.length]!;
+		};
+		const initialOf = (name: string) => {
+			const clean = name.replace(/^（已删除）$/, '✕');
+			const first = [...clean][0] ?? '?';
+			// 常见 emoji / 符号用全角占位更容易看清
+			return /[\u3400-\u9fff]/.test(first) ? first : first.toUpperCase();
+		};
+
+		const relTime = (ts: number) => {
+			const diff = Date.now() - ts;
+			const m = 60_000;
+			if (diff < m) return '刚刚';
+			if (diff < 60 * m) return `${Math.floor(diff / m)} 分钟前`;
+			if (diff < 24 * 60 * m) return `${Math.floor(diff / (60 * m))} 小时前`;
+			if (diff < 30 * 24 * 60 * m) return `${Math.floor(diff / (24 * 60 * m))} 天前`;
+			const d = new Date(ts);
+			return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		};
+
+		const setStatus = (text: string, tone: '' | 'ok' | 'error' | 'warn' = '') => {
+			status.textContent = text;
+			if (tone) status.dataset.tone = tone;
+			else delete status.dataset.tone;
+		};
+
+		const canDelete = (entry: Reply) => Boolean(tokens[entry.id]) || Boolean(adminPassword);
+
+		/** 找到某条留言（楼层或回复） */
+		function findEntry(id?: string | null): Reply | null {
+			if (!id) return null;
+			for (const floor of floors) {
+				if (floor.id === id) return floor;
+				const hit = floor.replies.find((reply) => reply.id === id);
+				if (hit) return hit;
+			}
+			return null;
+		}
+
+		function anchorId(id: string) {
+			return `gb-${id}`;
+		}
+
+		function flash(id: string) {
+			const el = document.getElementById(anchorId(id));
+			if (!el) return;
+			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			el.classList.add('is-flash');
+			setTimeout(() => el.classList.remove('is-flash'), 1400);
+		}
+
+		/** 用 DOM API 拼一条留言（避免 innerHTML 注入） */
+		function entryHead(entry: Reply, extra?: HTMLElement) {
+			const head = document.createElement('div');
+			head.className = 'gb-item-head';
+
+			const who = document.createElement('span');
+			who.className = 'gb-name';
+			who.textContent = entry.name;
+
+			const when = document.createElement('time');
+			when.className = 'gb-time';
+			when.dateTime = new Date(entry.createdAt).toISOString();
+			when.textContent = relTime(entry.createdAt);
+			when.title = new Date(entry.createdAt).toLocaleString('zh-CN');
+
+			const anchor = document.createElement('a');
+			anchor.className = 'gb-anchor';
+			anchor.href = `#${anchorId(entry.id)}`;
+			anchor.textContent = '#';
+			anchor.title = '复制这条留言的链接';
+			anchor.addEventListener('click', async (event) => {
+				event.preventDefault();
+				const url = `${location.origin}${location.pathname}#${anchorId(entry.id)}`;
+				history.replaceState(null, '', `#${anchorId(entry.id)}`);
+				try {
+					await navigator.clipboard.writeText(url);
+					setStatus('链接已复制', 'ok');
+				} catch {
+					setStatus(url, '');
+				}
+			});
+
+			head.append(who, when);
+			if (extra) head.append(extra);
+			if (entry.hidden) {
+				const badge = document.createElement('span');
+				badge.className = 'gb-badge';
+				badge.textContent = entry.name === '（已删除）' ? '原留言已删除' : '已隐藏';
+				head.append(badge);
+			}
+			head.append(anchor);
+			return head;
+		}
+
+		function entryMessage(entry: Reply) {
+			const text = document.createElement('p');
+			text.className = 'gb-message';
+			if (entry.replyToName && entry.replyToId) {
+				const mention = document.createElement('span');
+				mention.className = 'gb-mention';
+				mention.textContent = `@${entry.replyToName}`;
+				mention.title = '跳到这条留言';
+				mention.addEventListener('click', () => flash(entry.replyToId!));
+				text.append(mention, document.createTextNode(' '));
+			}
+			text.append(document.createTextNode(entry.message || '（内容已删除）'));
+			return text;
+		}
+
+		function entryActions(entry: Reply, options: { isFloor: boolean; floor: Floor }) {
+			const actions = document.createElement('div');
+			actions.className = 'gb-actions';
+
+			if (allowReply) {
+				const replyBtn = document.createElement('button');
+				replyBtn.type = 'button';
+				replyBtn.className = 'gb-act';
+				replyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A4 4 0 0 1 7 9h10"/><path d="m12 14 3-3-3-3"/><path d="M17 5v4"/></svg> 回复`;
+				replyBtn.addEventListener('click', () => startReply(entry, options.floor));
+				actions.append(replyBtn);
+			}
+
+			if (options.isFloor && options.floor.replies.length > 1) {
+				const toggle = document.createElement('button');
+				toggle.type = 'button';
+				toggle.className = 'gb-act';
+				const isCollapsed = collapsed[options.floor.id];
+				toggle.textContent = isCollapsed
+					? `展开 ${options.floor.replies.length} 条回复`
+					: `收起回复`;
+				toggle.addEventListener('click', () => {
+					collapsed[options.floor.id] = !collapsed[options.floor.id];
+					ls.set(COLLAPSE_KEY, JSON.stringify(collapsed));
+					render();
+				});
+				actions.append(toggle);
+			}
+
+			if (canDelete(entry)) {
+				const del = document.createElement('button');
+				del.type = 'button';
+				del.className = 'gb-act gb-act--danger';
+				del.textContent = '删除';
+				del.addEventListener('click', () => remove(entry, del, options.isFloor));
+				actions.append(del);
+			}
+			return actions;
+		}
+
+		function renderReply(entry: Reply, floor: Floor) {
+			const el = document.createElement('article');
+			el.className = 'gb-reply-item';
+			el.id = anchorId(entry.id);
+			if (entry.hidden) el.classList.add('is-hidden');
+
+			const avatar = document.createElement('span');
+			avatar.className = 'gb-avatar gb-avatar--sm';
+			avatar.style.setProperty('--av', colorOf(entry.name));
+			avatar.textContent = initialOf(entry.name);
+
+			const body = document.createElement('div');
+			body.className = 'gb-body';
+			body.append(entryHead(entry), entryMessage(entry), entryActions(entry, { isFloor: false, floor }));
+
+			el.append(avatar, body);
+			return el;
+		}
+
+		function renderFloor(entry: Floor, index: number) {
+			const el = document.createElement('article');
+			el.className = 'gb-item card';
+			el.id = anchorId(entry.id);
+			el.dataset.floorId = entry.id;
+			if (entry.hidden) el.classList.add('is-hidden');
+
+			const main = document.createElement('div');
+			main.className = 'gb-main';
+
+			const avatar = document.createElement('span');
+			avatar.className = 'gb-avatar';
+			avatar.style.setProperty('--av', colorOf(entry.name));
+			avatar.textContent = initialOf(entry.name);
+
+			const body = document.createElement('div');
+			body.className = 'gb-body';
+
+			const op = document.createElement('span');
+			op.className = 'gb-op';
+			op.textContent = '楼主';
+
+			const head = entryHead(entry, index === 0 ? op : undefined);
+			body.append(head, entryMessage(entry), entryActions(entry, { isFloor: true, floor: entry }));
+
+			const replies = entry.replies ?? [];
+			if (replies.length > 0) {
+				const isCollapsed = Boolean(collapsed[entry.id]);
+				const box = document.createElement('div');
+				box.className = 'gb-replies';
+				if (isCollapsed) box.classList.add('is-collapsed');
+				box.dataset.repliesOf = entry.id;
+				for (const reply of replies) box.append(renderReply(reply, entry));
+
+				if (isCollapsed) {
+					const showBtn = document.createElement('button');
+					showBtn.type = 'button';
+					showBtn.className = 'gb-replies-toggle';
+					showBtn.textContent = `展开 ${replies.length} 条回复`;
+					showBtn.addEventListener('click', () => {
+						delete collapsed[entry.id];
+						ls.set(COLLAPSE_KEY, JSON.stringify(collapsed));
+						render();
+					});
+					body.append(showBtn);
+				} else {
+					body.append(box);
+					if (replies.length > 2) {
+						const hideBtn = document.createElement('button');
+						hideBtn.type = 'button';
+						hideBtn.className = 'gb-replies-toggle';
+						hideBtn.textContent = `收起 ${replies.length} 条回复`;
+						hideBtn.addEventListener('click', () => {
+							collapsed[entry.id] = true;
+							ls.set(COLLAPSE_KEY, JSON.stringify(collapsed));
+							render();
+						});
+						body.append(hideBtn);
+					}
+				}
+			}
+
+			main.append(avatar, body);
+			el.append(main);
+			return el;
+		}
+
+		function render() {
+			if (!floors.length) {
+				list.innerHTML = `<div class="gb-empty">
+					<span style="font-size:1.4rem">🐾</span>
+					<p>还没有人留言，第一句话就交给你了。</p>
+				</div>`;
+				countEl.textContent = '0 条';
+				moreBtn.setAttribute('hidden', '');
+				return;
+			}
+
+			const ordered = [...floors].sort((a, b) =>
+				sortMode === 'hot'
+					? b.replies.length - a.replies.length || b.createdAt - a.createdAt
+					: b.createdAt - a.createdAt,
+			);
+
+			list.innerHTML = '';
+			ordered.forEach((floor, index) => list.append(renderFloor(floor, index)));
+
+			const replyTotal = floors.reduce((sum, floor) => sum + floor.replies.length, 0);
+			countEl.textContent = replyTotal
+				? `${floors.length} 层 · ${replyTotal} 条回复`
+				: `${floors.length} 条`;
+			moreBtn.toggleAttribute('hidden', !hasMore);
+
+			// 支持直接用 #gb-xxx 定位
+			if (location.hash.startsWith('#gb-')) {
+				const target = document.getElementById(location.hash.slice(1));
+				target?.scrollIntoView({ block: 'center' });
+			}
+		}
+
+		function startReply(entry: Reply, floor: Floor) {
+			if (!allowReply) return;
+			replyTarget = { id: entry.id, name: entry.name, floorName: floor.name };
+			const isNested = entry.id !== floor.id;
+			replyHint.innerHTML = isNested
+				? `正在回复 <b>${escapeHtml(entry.name)}</b>（在 ${escapeHtml(floor.name)} 的楼层下）`
+				: `正在回复 <b>${escapeHtml(entry.name)}</b> 的留言`;
+			replyBar.removeAttribute('hidden');
+			form.classList.add('is-replying');
+			cancelBtn.removeAttribute('hidden');
+			submitLabel.textContent = '发布回复';
+			messageInput.placeholder = isNested ? `回复 @${entry.name}…` : `回复 ${entry.name}…`;
+			messageInput.focus();
+			form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
+
+		function clearReply() {
+			replyTarget = null;
+			replyBar.setAttribute('hidden', '');
+			form.classList.remove('is-replying');
+			cancelBtn.setAttribute('hidden', '');
+			submitLabel.textContent = '发布留言';
+			messageInput.placeholder = '想说什么都可以，技术、吐槽、或者只是打个招呼 ✦';
+		}
+
+		function escapeHtml(text: string) {
+			return text.replace(/[&<>"']/g, (char) =>
+				({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char,
+			);
+		}
+
+		async function load() {
+			try {
+				const params = new URLSearchParams({ size: String(size) });
+				if (adminPassword) {
+					params.set('withHidden', '1');
+					params.set('adminPassword', adminPassword);
+				}
+				const res = await fetch(`/api/guestbook?${params}`, { headers: { accept: 'application/json' } });
+				if (!res.ok) {
+					const data = await res.json().catch(() => ({}));
+					throw new Error(data.hint || data.error || `HTTP ${res.status}`);
+				}
+				const data = (await res.json()) as {
+					entries: Floor[];
+					hasMore: boolean;
+					capabilities?: { adminReview?: boolean };
+				};
+				floors = data.entries;
+				hasMore = data.hasMore;
+				adminToggle.toggleAttribute('hidden', !data.capabilities?.adminReview);
+				render();
+			} catch (error) {
+				list.innerHTML = `<div class="gb-empty">
+					<span style="font-size:1.4rem">🔌</span>
+					<p>留言板还没接上后端。</p>
+					<p style="font-size:0.78rem">给 Cloudflare Pages 项目绑定一个名为 <code>BLOG_KV</code> 的 KV 命名空间后即可使用。</p>
+				</div>`;
+				countEl.textContent = '—';
+				console.warn('[guestbook]', error);
+			}
+		}
+
+		async function remove(entry: Reply, btn: HTMLButtonElement, isFloor: boolean) {
+			const isOwn = Boolean(tokens[entry.id]);
+			const floorReplies = floors.find((item) => item.id === entry.id)?.replies.length ?? 0;
+			const extra = isFloor && floorReplies ? `（下面的 ${floorReplies} 条回复也会一起藏起来）` : '';
+			const question = isOwn
+				? `删除这条留言？${extra}`
+				: `以管理员身份隐藏「${entry.name}」的留言？${extra}`;
+			if (!window.confirm(question)) return;
+			btn.disabled = true;
+			try {
+				const res = await fetch(`/api/guestbook/${encodeURIComponent(entry.id)}`, {
+					method: 'DELETE',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify(isOwn ? { token: tokens[entry.id] } : { adminPassword }),
+				});
+				const data = await res.json().catch(() => ({}));
+				if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+				delete tokens[entry.id];
+				ls.set(TOKEN_KEY, JSON.stringify(tokens));
+				setStatus(data.cascaded ? `已删除，同时隐藏了 ${data.cascaded} 条回复` : '已删除', 'ok');
+				await load();
+			} catch (error) {
+				setStatus(error instanceof Error ? error.message : '删除失败', 'error');
+				btn.disabled = false;
+			}
+		}
+
+		async function submit(event: SubmitEvent) {
+			event.preventDefault();
+			const name = nameInput.value.trim();
+			const message = messageInput.value.trim();
+			if (!name) {
+				setStatus('昵称还没填呢', 'error');
+				nameInput.focus();
+				return;
+			}
+			if (message.length < 2) {
+				setStatus('留言太短了，至少写两个字', 'error');
+				messageInput.focus();
+				return;
+			}
+
+			submitBtn.disabled = true;
+			setStatus(replyTarget ? '正在发布回复…' : '正在发布…');
+			try {
+				const turnstileToken = (window as unknown as Record<string, string>).__ashTurnstileToken;
+				const res = await fetch('/api/guestbook', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						name,
+						message,
+						replyToId: replyTarget?.id,
+						website: honeypot.value,
+						turnstileToken,
+						adminPassword: adminInput.value || undefined,
+					}),
+				});
+				const data = await res.json().catch(() => ({}));
+				if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+
+				if (data.entry?.id && data.token) {
+					tokens[data.entry.id] = data.token;
+					ls.set(TOKEN_KEY, JSON.stringify(tokens));
+				}
+				ls.set(NAME_KEY, name);
+				if (adminInput.value) {
+					adminPassword = adminInput.value;
+					ls.set(ADMIN_KEY, adminPassword);
+				}
+
+				const wasReply = Boolean(replyTarget);
+				messageInput.value = '';
+				counter.textContent = '0 / 600';
+				clearReply();
+				setStatus(wasReply ? '回复成功 ✦' : '发布成功，谢谢你的留言 ✦', 'ok');
+				await load();
+				if (wasReply && data.entry?.id) {
+					// 展开所在楼层并定位到新回复
+					const floor = floors.find(
+						(item) => item.id === data.entry.parentId || item.replies.some((r) => r.id === data.entry.id),
+					);
+					if (floor) {
+						delete collapsed[floor.id];
+						ls.set(COLLAPSE_KEY, JSON.stringify(collapsed));
+						render();
+					}
+					setTimeout(() => flash(data.entry.id), 120);
+				}
+			} catch (error) {
+				setStatus(error instanceof Error ? error.message : '发布失败，稍后再试', 'error');
+			} finally {
+				submitBtn.disabled = false;
+				if (turnstileSiteKey && typeof (window as any).turnstile?.reset === 'function') {
+					(window as any).turnstile.reset();
+					(window as unknown as Record<string, unknown>).__ashTurnstileToken = undefined;
+				}
+			}
+		}
+
+		// —— 事件绑定 ——
+		form.addEventListener('submit', submit);
+		replyClear.addEventListener('click', clearReply);
+		cancelBtn.addEventListener('click', clearReply);
+		moreBtn.addEventListener('click', () => load());
+		root.querySelector('[data-gb-refresh]')?.addEventListener('click', () => load());
+		adminToggle.addEventListener('click', () => {
+			const opened = !adminBox.hasAttribute('hidden');
+			adminBox.toggleAttribute('hidden', opened);
+			if (!opened) adminInput.focus();
+		});
+		root.querySelectorAll<HTMLElement>('[data-gb-sort]').forEach((btn) => {
+			if (btn.dataset.gbSort === sortMode) btn.classList.add('is-active');
+			else btn.classList.remove('is-active');
+			btn.addEventListener('click', () => {
+				sortMode = (btn.dataset.gbSort as 'new' | 'hot') ?? 'new';
+				ls.set('ash-guestbook-sort', sortMode);
+				root.querySelectorAll('[data-gb-sort]').forEach((other) => other.classList.toggle('is-active', other === btn));
+				render();
+			});
+		});
+		messageInput.addEventListener('input', () => {
+			counter.textContent = `${messageInput.value.length} / 600`;
+		});
+		messageInput.addEventListener('keydown', (event) => {
+			// ⌘/Ctrl + Enter 直接发布
+			if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+				event.preventDefault();
+				form.requestSubmit();
+			}
+		});
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape' && replyTarget) clearReply();
+		});
+
+		// 人机验证脚本（按需加载）
+		if (turnstileSiteKey) {
+			const script = document.createElement('script');
+			script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+			script.async = true;
+			script.onload = () => {
+				const widget = root.querySelector<HTMLElement>('.cf-turnstile');
+				if (widget && typeof (window as any).turnstile?.render === 'function') {
+					(window as any).turnstile.render(widget, {
+						sitekey: turnstileSiteKey,
+						callback: (token: string) => {
+							(window as unknown as Record<string, string>).__ashTurnstileToken = token;
+						},
+					});
+				}
+			};
+			document.head.append(script);
+		}
+
+		const savedName = ls.get(NAME_KEY);
+		if (savedName) nameInput.value = savedName;
+
+		load();
+	}
+</script>

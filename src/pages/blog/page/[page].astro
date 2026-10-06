@@ -1,0 +1,58 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import Pagination from '@/components/Pagination.astro';
+import { getPostMetas } from '@/lib/blog';
+import { POSTS_PER_PAGE } from '@/data/site';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+	const posts = await getPostMetas();
+	const total = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
+	return Array.from({ length: Math.max(0, total - 1) }, (_, i) => {
+		const page = i + 2;
+		return {
+			params: { page: String(page) },
+			props: {
+				page,
+				total,
+				posts: posts.slice((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE),
+			},
+		};
+	});
+}) satisfies GetStaticPaths;
+
+const { page, total, posts } = Astro.props;
+---
+<BaseLayout title={`文章 · 第 ${page} 页`} description={`灰羽博客文章列表第 ${page} 页，共 ${total} 页。`}>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="archive" size={13} /> 第 {page} / {total} 页</p>
+		<h1>继续往下翻</h1>
+		<p>写得多的时候会有点长，慢慢看。</p>
+	</header>
+
+	<div class="wrap">
+		<div class="card-grid">
+			{posts.map((post, i) => (
+				<PostCard post={post} index={i} />
+			))}
+		</div>
+		<Pagination current={page} total={total} base="/blog" />
+	</div>
+</BaseLayout>
+
+<style>
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	@media (min-width: 640px) {
+		.card-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1000px) {
+		.card-grid { grid-template-columns: repeat(3, 1fr); }
+	}
+</style>

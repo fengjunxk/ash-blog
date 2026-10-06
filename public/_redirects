@@ -1,0 +1,15 @@
+# 老链接重定向（Cloudflare Pages 原生支持，最多 2100 条）
+# 语法：来源  目标  状态码
+#
+# 示例：把旧的 /post/:id 跳到新的文章路径
+# /post/:id    /blog/:id    301
+
+# 常见别名
+/feed          /rss.xml          301
+/feed.xml      /rss.xml          301
+/rss           /rss.xml          301
+/posts         /blog/            301
+/posts/*       /blog/:splat      301
+/blog/page/1   /blog/            301
+/tag/:tag      /tags/:tag        301
+/category/:c   /categories/:c    301

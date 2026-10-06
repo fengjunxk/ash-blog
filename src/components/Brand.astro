@@ -1,0 +1,74 @@
+---
+import { SITE } from '@/data/site';
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+	href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
+---
+<a href="/" class="brand" aria-label={`${SITE.title} 首页`}>
+	<span class="brand__mark" aria-hidden="true">
+		<svg viewBox="0 0 48 48" width="34" height="34" fill="none">
+			<rect x="1.5" y="1.5" width="45" height="45" rx="14" fill="var(--c-ink)" />
+			<path
+				d="M14 30c1-6.5 5-10 10-10s9 3.5 10 10"
+				stroke="var(--c-accent)"
+				stroke-width="2.6"
+				stroke-linecap="round"
+			/>
+			<path
+				d="M16 20l-3-7 6.5 3.5h9L35 13l-3 7"
+				stroke="var(--c-accent)"
+				stroke-width="2.6"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				opacity="0.85"
+			/>
+			<circle cx="19" cy="26" r="1.7" fill="var(--c-accent)" />
+			<circle cx="29" cy="26" r="1.7" fill="var(--c-accent)" />
+			<path d="M24 30.5c1.4 0 2.4-.7 2.8-1.8" stroke="var(--c-accent)" stroke-width="1.8" stroke-linecap="round" />
+		</svg>
+	</span>
+	<span class="brand__text">
+		<strong>{SITE.title.split('·')[0].trim()}</strong>
+		<em>{SITE.tagline}</em>
+	</span>
+</a>
+
+<style>
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		text-decoration: none;
+		color: inherit;
+	}
+	.brand__mark {
+		display: grid;
+		place-items: center;
+		transition: transform 0.4s var(--ease-spring);
+	}
+	.brand:hover .brand__mark {
+		transform: rotate(-6deg) scale(1.05);
+	}
+	.brand__text {
+		display: flex;
+		flex-direction: column;
+		line-height: 1.15;
+	}
+	.brand__text strong {
+		font-family: var(--font-display);
+		font-size: 1.06rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+	.brand__text em {
+		font-style: normal;
+		font-size: 0.68rem;
+		color: var(--c-text-mute);
+		letter-spacing: 0.02em;
+	}
+	@media (max-width: 480px) {
+		.brand__text em {
+			display: none;
+		}
+	}
+</style>

@@ -1,0 +1,461 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Toc from '@/components/Toc.astro';
+import PostCard from '@/components/PostCard.astro';
+import ViewCounter from '@/components/ViewCounter.astro';
+import Comments from '@/components/Comments.astro';
+import type { PostMeta } from '@/lib/blog';
+import { formatDate, timeAgo } from '@/lib/utils';
+import { AUTHOR, SITE, FEATURES } from '@/data/site';
+import { tocFromMarkdown } from '@/lib/toc';
+
+interface Props {
+	post: PostMeta;
+	body: string;
+	prev?: PostMeta;
+	next?: PostMeta;
+	related?: PostMeta[];
+}
+const { post, body, prev, next, related = [] } = Astro.props;
+const toc = tocFromMarkdown(body, 3);
+const wordCount = post.words.toLocaleString('zh-CN');
+
+const jsonLd = {
+	'@context': 'https://schema.org',
+	'@type': 'BlogPosting',
+	headline: post.title,
+	description: post.description,
+	datePublished: post.published.toISOString(),
+	dateModified: (post.updated ?? post.published).toISOString(),
+	author: { '@type': 'Person', name: AUTHOR.name, url: SITE.url },
+	publisher: { '@type': 'Organization', name: SITE.title },
+	mainEntityOfPage: new URL(post.url, SITE.url).href,
+	keywords: post.tags.join(', '),
+	wordCount: post.words,
+	inLanguage: SITE.lang,
+};
+const breadcrumb = {
+	'@context': 'https://schema.org',
+	'@type': 'BreadcrumbList',
+	itemListElement: [
+		{ '@type': 'ListItem', position: 1, name: '首页', item: SITE.url },
+		{ '@type': 'ListItem', position: 2, name: '文章', item: new URL('/blog/', SITE.url).href },
+		{ '@type': 'ListItem', position: 3, name: post.title, item: new URL(post.url, SITE.url).href },
+	],
+};
+---
+<BaseLayout
+	title={post.title}
+	description={post.description}
+	type="article"
+	publishedTime={post.published}
+	modifiedTime={post.updated}
+	tags={post.tags}
+	jsonLd={[jsonLd, breadcrumb]}
+>
+	<Fragment slot="head">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+	</Fragment>
+
+	<div class="post-progress" id="post-progress" aria-hidden="true"></div>
+
+	<article class="wrap post">
+		<header class="post__head">
+			<nav class="crumbs" aria-label="面包屑">
+				<a href="/">首页</a>
+				<Icon name="chevronRight" size={12} />
+				<a href="/blog/">文章</a>
+				<Icon name="chevronRight" size={12} />
+				<a href={`/categories/${encodeURIComponent(post.category)}/`}>{post.category}</a>
+			</nav>
+
+			<h1 class="post__title">{post.title}</h1>
+			{post.description && <p class="post__desc">{post.description}</p>}
+
+			<div class="post__meta">
+				<span class="post__avatar" aria-hidden="true">
+					<svg viewBox="0 0 48 48" width="30" height="30" fill="none">
+						<rect width="48" height="48" rx="16" fill="var(--c-ink)" />
+						<path d="M15 30c1-6 4.8-9 9-9s8 3 9 9" stroke="var(--c-accent)" stroke-width="2.6" stroke-linecap="round" />
+						<path d="M17 20l-2.6-6 5.8 3h7.6l5.8-3L31 20" stroke="var(--c-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+						<circle cx="20" cy="26.5" r="1.6" fill="var(--c-accent)" />
+						<circle cx="28" cy="26.5" r="1.6" fill="var(--c-accent)" />
+					</svg>
+				</span>
+				<span class="post__author">
+					<b>{AUTHOR.name}</b>
+					<em>{AUTHOR.title}</em>
+				</span>
+				<span class="post__dot" aria-hidden="true">·</span>
+				<time datetime={post.published.toISOString()} title={formatDate(post.published)}>
+					{formatDate(post.published)}
+				</time>
+				{post.updated && (
+					<>
+						<span class="post__dot" aria-hidden="true">·</span>
+						<span class="post__updated" title={formatDate(post.updated)}>更新于 {timeAgo(post.updated)}</span>
+					</>
+				)}
+				<span class="post__dot" aria-hidden="true">·</span>
+				<span class="post__stat"><Icon name="clock" size={13} /> {post.minutes} 分钟</span>
+				<span class="post__stat"><Icon name="pen" size={13} /> {wordCount} 字</span>
+			</div>
+
+			<div class="post__tags">
+				<a class="chip chip-accent" href={`/categories/${encodeURIComponent(post.category)}/`}>
+					<Icon name="folder" size={13} /> {post.category}
+				</a>
+				{post.tags.map((tag) => (
+					<a class="chip" href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+				))}
+			</div>
+		</header>
+
+		<div class="post__grid">
+			<div class="post__main">
+				<div
+					class="prose-ash"
+					id="post-content"
+					data-pagefind-meta={`date:${formatDate(post.published, 'iso')},category:${post.category}`}
+				>
+					<h1 data-pagefind-meta="title" hidden>{post.title}</h1>
+					<slot name="content" />
+				</div>
+
+				<div class="post__after">
+					<ViewCounter slug={post.slug} />
+					<div class="post__share">
+						<span class="post__share-label">分享</span>
+						<a class="icon-btn share-btn" data-share="x" title="分享到 X" aria-label="分享到 X"><Icon name="x" size={15} /></a>
+						<a class="icon-btn share-btn" data-share="weibo" title="分享到微博" aria-label="分享到微博"><Icon name="globe" size={15} /></a>
+						<button class="icon-btn share-btn" data-share="copy" title="复制链接" aria-label="复制链接"><Icon name="link" size={15} /></button>
+					</div>
+				</div>
+
+				{(prev || next) && (
+					<nav class="post__nav" aria-label="上下篇">
+						{prev ? (
+							<a href={prev.url} class="post__nav-item">
+								<em>上一篇</em>
+								<strong>{prev.title}</strong>
+							</a>
+						) : (
+							<span class="post__nav-item is-empty"><em>上一篇</em><strong>已经是最早的了</strong></span>
+						)}
+						{next ? (
+							<a href={next.url} class="post__nav-item post__nav-item--next">
+								<em>下一篇</em>
+								<strong>{next.title}</strong>
+							</a>
+						) : (
+							<span class="post__nav-item post__nav-item--next is-empty"><em>下一篇</em><strong>已经是最新的了</strong></span>
+						)}
+					</nav>
+				)}
+
+				<Comments />
+
+				{FEATURES.relatedPosts && related.length > 0 && (
+					<section class="post__related" data-reveal data-pagefind-ignore>
+						<h2 class="post__related-title">
+							<Icon name="sparkles" size={16} /> 也许你还想看
+						</h2>
+						<div class="post__related-grid">
+							{related.map((item, i) => (
+								<PostCard post={item} variant="compact" index={i} />
+							))}
+						</div>
+					</section>
+				)}
+			</div>
+
+			<aside class="post__aside" data-pagefind-ignore>
+				{toc.length > 1 && (
+					<div class="aside-card" data-sticky>
+						<Toc items={toc} />
+					</div>
+				)}
+				<div class="aside-card aside-card--cta">
+					<p class="aside-cta__title">
+						<Icon name="coffee" size={15} /> 觉得有用？
+					</p>
+					<p class="aside-cta__desc">订阅 RSS，有新文章第一时间推给你。</p>
+					<a class="btn btn-accent" href="/rss.xml"><Icon name="rss" size={14} /> 订阅</a>
+				</div>
+			</aside>
+		</div>
+	</article>
+</BaseLayout>
+
+<style>
+	.post-progress {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 60;
+		height: 3px;
+		width: 0;
+		background: linear-gradient(90deg, var(--c-accent), color-mix(in oklab, var(--c-accent) 35%, transparent));
+	}
+	.post {
+		padding-block: 2.2rem 1rem;
+	}
+	.post__head {
+		max-width: 52rem;
+	}
+	.crumbs {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		font-size: 0.78rem;
+		color: var(--c-text-mute);
+	}
+	.crumbs a {
+		color: var(--c-text-mute);
+		text-decoration: none;
+	}
+	.crumbs a:hover {
+		color: var(--c-accent-ink);
+	}
+	.post__title {
+		margin-top: 1rem;
+		font-family: var(--font-display);
+		font-size: clamp(1.75rem, 1.4rem + 2vw, 2.6rem);
+		font-weight: 700;
+		line-height: 1.22;
+		letter-spacing: -0.025em;
+	}
+	.post__desc {
+		margin-top: 0.9rem;
+		font-size: 1rem;
+		line-height: 1.8;
+		color: var(--c-text-mute);
+	}
+	.post__meta {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin-top: 1.3rem;
+		font-size: 0.8rem;
+		color: var(--c-text-mute);
+	}
+	.post__avatar {
+		display: grid;
+		place-items: center;
+	}
+	.post__author {
+		display: grid;
+		line-height: 1.25;
+		margin-right: 0.15rem;
+	}
+	.post__author b {
+		font-size: 0.84rem;
+		color: var(--c-text);
+	}
+	.post__author em {
+		font-style: normal;
+		font-size: 0.7rem;
+	}
+	.post__dot {
+		opacity: 0.5;
+	}
+	.post__stat {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.post__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1.1rem;
+	}
+	.chip-accent {
+		color: var(--c-accent-ink);
+		border-color: color-mix(in oklab, var(--c-accent) 34%, transparent);
+		background: var(--c-accent-soft);
+	}
+
+	.post__grid {
+		display: grid;
+		gap: 2.6rem;
+		margin-top: 2.4rem;
+	}
+	.post__main {
+		min-width: 0;
+		max-width: 52rem;
+	}
+	.post__aside {
+		display: none;
+	}
+
+	.post__after {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.8rem;
+		margin-top: 2.4rem;
+		padding-top: 1.2rem;
+		border-top: 1px solid var(--c-border);
+	}
+	.post__share {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.post__share-label {
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+	}
+	.post__share .icon-btn {
+		width: 1.9rem;
+		height: 1.9rem;
+	}
+
+	.post__nav {
+		display: grid;
+		gap: 0.7rem;
+		margin-top: 2rem;
+	}
+	.post__nav-item {
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.9rem 1.05rem;
+		border: 1px solid var(--c-border);
+		border-radius: var(--radius-md);
+		background: var(--c-surface);
+		text-decoration: none;
+		transition: all 0.25s var(--ease-soft);
+	}
+	.post__nav-item:hover {
+		border-color: var(--c-accent);
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-soft);
+	}
+	.post__nav-item em {
+		font-style: normal;
+		font-size: 0.72rem;
+		color: var(--c-accent-ink);
+		font-weight: 600;
+	}
+	.post__nav-item strong {
+		font-size: 0.92rem;
+		font-weight: 600;
+		color: var(--c-text);
+		line-height: 1.45;
+	}
+	.post__nav-item.is-empty {
+		opacity: 0.55;
+	}
+	.post__nav-item.is-empty strong {
+		font-weight: 500;
+		color: var(--c-text-mute);
+	}
+	.post__nav-item--next {
+		text-align: right;
+	}
+
+	.post__related {
+		margin-top: 3rem;
+	}
+	.post__related-title {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 1.05rem;
+		font-weight: 700;
+		margin-bottom: 1rem;
+	}
+	.post__related-grid {
+		display: grid;
+		gap: 0.8rem;
+	}
+
+	.aside-card {
+		padding: 1rem 1.05rem;
+		border: 1px solid var(--c-border);
+		border-radius: var(--radius-md);
+		background: color-mix(in oklab, var(--c-surface) 75%, transparent);
+	}
+	.aside-card--cta {
+		margin-top: 1rem;
+		background: linear-gradient(160deg, var(--c-accent-soft), color-mix(in oklab, var(--c-surface) 80%, transparent));
+		border-color: color-mix(in oklab, var(--c-accent) 25%, transparent);
+	}
+	.aside-cta__title {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.86rem;
+		font-weight: 700;
+	}
+	.aside-cta__desc {
+		margin: 0.4rem 0 0.85rem;
+		font-size: 0.78rem;
+		line-height: 1.65;
+		color: var(--c-text-mute);
+	}
+
+	@media (min-width: 700px) {
+		.post__nav {
+			grid-template-columns: 1fr 1fr;
+		}
+		.post__related-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+	@media (min-width: 1080px) {
+		.post__grid {
+			grid-template-columns: minmax(0, 1fr) 15.5rem;
+			gap: 3rem;
+		}
+		.post__aside {
+			display: block;
+		}
+		.aside-card[data-sticky] {
+			position: sticky;
+			top: 5.4rem;
+		}
+	}
+</style>
+
+<script>
+	// 阅读进度条
+	const bar = document.getElementById('post-progress');
+	const content = document.getElementById('post-content');
+	const updateProgress = () => {
+		if (!bar || !content) return;
+		const start = content.offsetTop - 80;
+		const total = content.offsetHeight - window.innerHeight * 0.6;
+		const p = Math.max(0, Math.min(1, (window.scrollY - start) / Math.max(total, 1)));
+		bar.style.width = `${p * 100}%`;
+	};
+	updateProgress();
+	window.addEventListener('scroll', updateProgress, { passive: true });
+	window.addEventListener('resize', updateProgress);
+	document.addEventListener('astro:after-swap', updateProgress);
+
+	// 分享
+	const title = document.title;
+	const url = location.href;
+	document.querySelectorAll<HTMLElement>('.share-btn').forEach((btn) => {
+		btn.addEventListener('click', () => {
+			const kind = btn.dataset.share;
+			if (kind === 'x') {
+				window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank');
+			} else if (kind === 'weibo') {
+				window.open(`https://service.weibo.com/share/share.php?title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank');
+			} else if (kind === 'copy') {
+				navigator.clipboard?.writeText(url).then(() => {
+					btn.classList.add('text-accent');
+					btn.setAttribute('title', '已复制 ✓');
+					setTimeout(() => btn.setAttribute('title', '复制链接'), 1600);
+				});
+			}
+		});
+	});
+</script>

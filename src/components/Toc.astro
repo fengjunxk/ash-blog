@@ -1,0 +1,84 @@
+---
+import Icon from '@/components/Icon.astro';
+import type { TocItem } from '@/lib/toc';
+
+interface Props {
+	items: TocItem[];
+	title?: string;
+}
+const { items, title = '本页目录' } = Astro.props;
+const minDepth = items.length ? Math.min(...items.map((i) => i.depth)) : 2;
+---
+{items.length > 1 && (
+	<nav class="toc-block" aria-label="目录">
+		<p class="toc-block__title">
+			<Icon name="toc" size={14} /> {title}
+		</p>
+		<div class="toc">
+			{items.map((item) => (
+				<a href={`#${item.id}`} data-depth={item.depth - minDepth} data-toc-link>
+					{item.text}
+				</a>
+			))}
+		</div>
+	</nav>
+)}
+
+<style>
+	.toc-block__title {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--c-text-mute);
+	}
+	.toc {
+		max-height: min(58vh, 26rem);
+		overflow-y: auto;
+		padding-right: 0.2rem;
+	}
+	.toc :global(a[data-depth='1']) {
+		padding-left: 1.35rem;
+		font-size: 0.79rem;
+	}
+	.toc :global(a[data-depth='2']) {
+		padding-left: 2rem;
+		font-size: 0.76rem;
+	}
+</style>
+
+<script>
+	const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]'));
+	if (links.length) {
+		const headings = links
+			.map((link) => {
+				const id = decodeURIComponent(link.hash.slice(1));
+				return document.getElementById(id);
+			})
+			.filter((el): el is HTMLElement => Boolean(el));
+
+		const setActive = (id: string) => {
+			links.forEach((link) => {
+				link.classList.toggle('active', decodeURIComponent(link.hash.slice(1)) === id);
+			});
+		};
+
+		const onScroll = () => {
+			const probe = window.scrollY + window.innerHeight * 0.28;
+			let current = headings[0]?.id ?? '';
+			for (const h of headings) {
+				if (h.offsetTop <= probe) current = h.id;
+				else break;
+			}
+			if (current) setActive(current);
+		};
+
+		onScroll();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		document.addEventListener('astro:after-swap', onScroll);
+	}
+</script>

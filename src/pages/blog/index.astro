@@ -1,0 +1,278 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import Pagination from '@/components/Pagination.astro';
+import { getPostMetas, categoriesOf, siteStats } from '@/lib/blog';
+import { formatNumber } from '@/lib/utils';
+import { POSTS_PER_PAGE } from '@/data/site';
+
+const posts = await getPostMetas();
+const categories = categoriesOf(posts);
+const stats = siteStats(posts);
+---
+<BaseLayout
+	title="全部文章"
+	description={`灰羽写过的全部 ${posts.length} 篇文章：前端工程、Cloudflare、设计随笔与生活记录。`}
+>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="pen" size={13} /> 文章列表</p>
+		<h1>写过的每一篇</h1>
+		<p>
+			一共 <b>{stats.count}</b> 篇，<b>{formatNumber(stats.words)}</b> 字，横跨 <b>{stats.categories}</b> 个分类。
+			下面可以按关键词即时过滤，也可以切成列表视图扫标题。
+		</p>
+		<div class="hero-chips">
+			{categories.slice(0, 6).map((cat) => (
+				<a class="chip" href={`/categories/${encodeURIComponent(cat.name)}/`}>
+					<Icon name="folder" size={12} /> {cat.name} <em>{cat.count}</em>
+				</a>
+			))}
+		</div>
+	</header>
+
+	<div class="wrap">
+		<div class="toolbar card" data-toolbar>
+			<div class="toolbar__search">
+				<Icon name="search" size={15} />
+				<input
+					type="search"
+					id="post-filter"
+					placeholder="输入关键词过滤（标题 / 标签 / 摘要）…"
+					aria-label="过滤文章"
+					autocomplete="off"
+				/>
+				<button type="button" class="toolbar__clear" id="post-filter-clear" hidden aria-label="清空">
+					<Icon name="close" size={13} />
+				</button>
+			</div>
+			<div class="toolbar__right">
+				<span class="toolbar__count" id="post-count">{posts.length} 篇</span>
+				<div class="toolbar__group" role="group" aria-label="排序">
+					<button type="button" class="toolbar__btn is-active" data-sort="desc" title="最新在前">
+						<Icon name="arrowUp" size={13} />
+					</button>
+					<button type="button" class="toolbar__btn" data-sort="asc" title="最早在前">
+						<Icon name="arrowUp" size={13} class="flip" />
+					</button>
+				</div>
+				<div class="toolbar__group" role="group" aria-label="视图">
+					<button type="button" class="toolbar__btn is-active" data-view="grid" title="卡片视图">
+						<Icon name="grid" size={13} />
+					</button>
+					<button type="button" class="toolbar__btn" data-view="list" title="列表视图">
+						<Icon name="list" size={13} />
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="card-grid" id="post-grid">
+			{posts.map((post, i) => (
+				<div
+					class="grid-item"
+					data-title={post.title}
+					data-tags={post.tags.join(' ')}
+					data-desc={post.description}
+					data-category={post.category}
+					data-date={post.published.toISOString()}
+					data-minutes={post.minutes}
+				>
+					<PostCard post={post} index={i} />
+				</div>
+			))}
+		</div>
+
+		<p class="empty-state" id="post-empty" hidden>
+			<Icon name="search" size={18} /> 没有匹配的文章，换个词试试？
+		</p>
+
+		<Pagination current={1} total={Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE))} base="/blog" />
+	</div>
+</BaseLayout>
+
+<style>
+	.hero-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1.2rem;
+	}
+	.hero-chips em {
+		font-style: normal;
+		font-size: 0.68rem;
+		opacity: 0.6;
+	}
+	.toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+		padding: 0.6rem 0.7rem;
+		margin-bottom: 1.4rem;
+		position: sticky;
+		top: 4.5rem;
+		z-index: 20;
+		backdrop-filter: blur(10px);
+		background: color-mix(in oklab, var(--c-surface) 88%, transparent);
+	}
+	.toolbar__search {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex: 1 1 16rem;
+		padding: 0.35rem 0.6rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-bg);
+		color: var(--c-text-mute);
+	}
+	.toolbar__search input {
+		flex: 1;
+		border: 0;
+		outline: 0;
+		background: transparent;
+		color: var(--c-text);
+		font-size: 0.85rem;
+		font-family: inherit;
+		min-width: 0;
+	}
+	.toolbar__clear {
+		display: grid;
+		place-items: center;
+		width: 1.4rem;
+		height: 1.4rem;
+		border-radius: 999px;
+		border: 0;
+		background: var(--c-surface-2);
+		color: var(--c-text-mute);
+		cursor: pointer;
+	}
+	.toolbar__right {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.toolbar__count {
+		font-size: 0.78rem;
+		color: var(--c-text-mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.toolbar__group {
+		display: flex;
+		gap: 2px;
+		padding: 2px;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-bg);
+	}
+	.toolbar__btn {
+		display: grid;
+		place-items: center;
+		width: 1.7rem;
+		height: 1.7rem;
+		border-radius: 999px;
+		border: 0;
+		background: transparent;
+		color: var(--c-text-mute);
+		cursor: pointer;
+		transition: all 0.2s var(--ease-soft);
+	}
+	.toolbar__btn:hover {
+		color: var(--c-text);
+	}
+	.toolbar__btn.is-active {
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+	:global(.flip) {
+		transform: rotate(180deg);
+	}
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.card-grid.is-list {
+		grid-template-columns: 1fr !important;
+		gap: 0.15rem;
+	}
+	.empty-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 3rem 1rem;
+		color: var(--c-text-mute);
+		font-size: 0.9rem;
+	}
+	@media (min-width: 640px) {
+		.card-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (min-width: 1000px) {
+		.card-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+</style>
+
+<script>
+	const grid = document.getElementById('post-grid');
+	const input = document.getElementById('post-filter') as HTMLInputElement | null;
+	const clearBtn = document.getElementById('post-filter-clear');
+	const countEl = document.getElementById('post-count');
+	const empty = document.getElementById('post-empty');
+	if (grid) {
+		const items = Array.from(grid.querySelectorAll<HTMLElement>('.grid-item'));
+		let sortDir: 'desc' | 'asc' = 'desc';
+
+		const apply = () => {
+			const q = (input?.value ?? '').trim().toLowerCase();
+			let shown = 0;
+			items.forEach((el) => {
+				const hay = `${el.dataset.title} ${el.dataset.tags} ${el.dataset.desc} ${el.dataset.category}`.toLowerCase();
+				const hit = !q || hay.includes(q);
+				el.toggleAttribute('hidden', !hit);
+				if (hit) shown++;
+			});
+			if (countEl) countEl.textContent = `${shown} 篇`;
+			empty?.toggleAttribute('hidden', shown > 0);
+			clearBtn?.toggleAttribute('hidden', !q);
+		};
+
+		const sort = () => {
+			const sorted = [...items].sort((a, b) => {
+				const da = a.dataset.date ?? '';
+				const db = b.dataset.date ?? '';
+				return sortDir === 'desc' ? db.localeCompare(da) : da.localeCompare(db);
+			});
+			sorted.forEach((el) => grid.appendChild(el));
+		};
+
+		input?.addEventListener('input', apply);
+		clearBtn?.addEventListener('click', () => {
+			if (input) input.value = '';
+			apply();
+			input?.focus();
+		});
+		document.querySelectorAll<HTMLElement>('[data-sort]').forEach((btn) => {
+			btn.addEventListener('click', () => {
+				sortDir = (btn.dataset.sort as 'desc' | 'asc') ?? 'desc';
+				document.querySelectorAll('[data-sort]').forEach((b) => b.classList.toggle('is-active', b === btn));
+				sort();
+			});
+		});
+		document.querySelectorAll<HTMLElement>('[data-view]').forEach((btn) => {
+			btn.addEventListener('click', () => {
+				const list = btn.dataset.view === 'list';
+				grid.classList.toggle('is-list', list);
+				grid.querySelectorAll('.post-card').forEach((card) => {
+					card.classList.toggle('post-card--list', list);
+				});
+				document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('is-active', b === btn));
+			});
+		});
+	}
+</script>

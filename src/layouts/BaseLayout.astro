@@ -1,0 +1,209 @@
+---
+import '@/styles/global.css';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import Seo from '@/components/Seo.astro';
+import CommandPalette from '@/components/CommandPalette.astro';
+import BackToTop from '@/components/BackToTop.astro';
+import Lightbox from '@/components/Lightbox.astro';
+import Analytics from '@/components/Analytics.astro';
+import { SITE, FEATURES } from '@/data/site';
+
+interface Props {
+	title?: string;
+	description?: string;
+	type?: 'website' | 'article';
+	publishedTime?: Date;
+	modifiedTime?: Date;
+	tags?: string[];
+	image?: string;
+	noindex?: boolean;
+	jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+	/** 正文页：加宽/关掉页脚上方留白等差异 */
+	bodyClass?: string;
+}
+
+const {
+	title,
+	description,
+	type,
+	publishedTime,
+	modifiedTime,
+	tags,
+	image,
+	noindex,
+	jsonLd,
+	bodyClass = '',
+} = Astro.props;
+---
+<!doctype html>
+<html lang={SITE.lang} data-theme-init="pending" class="scroll-smooth">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..800;1,9..144,400..700&family=Inter:wght@300..800&family=JetBrains+Mono:wght@400;500&display=swap"
+		/>
+		<Seo
+			title={title}
+			description={description}
+			type={type}
+			publishedTime={publishedTime}
+			modifiedTime={modifiedTime}
+			tags={tags}
+			image={image}
+			noindex={noindex}
+			jsonLd={jsonLd}
+		/>
+		<!-- 首屏前定主题，避免闪白 -->
+		<script is:inline>
+			(() => {
+				// 标记 JS 可用：滚动进场动画只在有 JS 时才隐藏元素
+				document.documentElement.classList.add('js');
+				try {
+					const saved = localStorage.getItem('ash-theme') || 'system';
+					const dark =
+						saved === 'dark' ||
+						(saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+					document.documentElement.dataset.themeMode = saved;
+					document.documentElement.dataset.themeInit = 'done';
+				} catch (e) {
+					document.documentElement.dataset.theme = 'light';
+				}
+			})();
+		</script>
+		<slot name="head" />
+	</head>
+	<body class:list={['min-h-dvh', bodyClass]}>
+		<a href="#main" class="skip-link">跳到正文</a>
+		<div class="page-shell">
+			<Header />
+			<main id="main" class="relative z-[1]">
+				<slot />
+			</main>
+			<Footer />
+		</div>
+		<BackToTop />
+		{FEATURES.commandPalette && FEATURES.search && <CommandPalette />}
+		<Lightbox />
+		<Analytics />
+
+		<script>
+			// 外部链接统一新窗口打开 + rel
+			const patchLinks = () => {
+				document.querySelectorAll<HTMLAnchorElement>('a[href^="http"]').forEach((a) => {
+					if (a.hostname && a.hostname !== location.hostname && !a.dataset.externalPatched) {
+						a.dataset.externalPatched = '1';
+						a.target = '_blank';
+						a.rel = 'noopener noreferrer';
+					}
+				});
+			};
+			patchLinks();
+			document.addEventListener('astro:after-swap', patchLinks);
+
+			// 滚动进场
+			const reveal = () => {
+				const els = document.querySelectorAll('[data-reveal]:not(.is-in)');
+				if (!('IntersectionObserver' in window)) {
+					els.forEach((el) => el.classList.add('is-in'));
+					return;
+				}
+				const io = new IntersectionObserver(
+					(entries) => {
+						entries.forEach((entry) => {
+							if (entry.isIntersecting) {
+								entry.target.classList.add('is-in');
+								io.unobserve(entry.target);
+							}
+						});
+					},
+					{ rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+				);
+				els.forEach((el, i) => {
+					(el as HTMLElement).style.transitionDelay = `${Math.min(i % 6, 5) * 45}ms`;
+					io.observe(el);
+				});
+			};
+			reveal();
+			document.addEventListener('astro:after-swap', reveal);
+
+			// 代码块：加头部工具条 + 复制按钮
+			const enhanceCode = () => {
+				document.querySelectorAll<HTMLPreElement>('.prose-ash pre:not([data-enhanced])').forEach((pre) => {
+					pre.dataset.enhanced = '1';
+					const code = pre.querySelector('code');
+					if (!code) return;
+					const wrapper = document.createElement('div');
+					wrapper.className = 'code-block';
+					pre.parentNode?.insertBefore(wrapper, pre);
+					wrapper.appendChild(pre);
+
+					const lang = (pre.dataset.language || code.dataset.language || 'code').replace(/^language-/, '');
+					const bar = document.createElement('div');
+					bar.className = 'code-block__head';
+					const label = document.createElement('span');
+					label.textContent = lang;
+					const copy = document.createElement('button');
+					copy.type = 'button';
+					copy.className = 'copy-btn';
+					copy.innerHTML = '复制';
+					copy.addEventListener('click', async () => {
+						try {
+							await navigator.clipboard.writeText(code.innerText);
+							copy.textContent = '已复制 ✓';
+							copy.dataset.copied = 'true';
+							setTimeout(() => {
+								copy.textContent = '复制';
+								copy.dataset.copied = 'false';
+							}, 1800);
+						} catch {
+							copy.textContent = '复制失败';
+						}
+					});
+					bar.append(label, copy);
+					wrapper.prepend(bar);
+				});
+			};
+			enhanceCode();
+			document.addEventListener('astro:after-swap', enhanceCode);
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	.skip-link {
+		position: fixed;
+		top: 0.6rem;
+		left: 0.6rem;
+		z-index: 100;
+		padding: 0.5rem 0.9rem;
+		border-radius: 999px;
+		background: var(--c-ink);
+		color: var(--c-bg);
+		font-size: 0.82rem;
+		text-decoration: none;
+		transform: translateY(-200%);
+		transition: transform 0.2s var(--ease-soft);
+	}
+	.skip-link:focus {
+		transform: none;
+	}
+	.page-shell {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+	}
+	.page-shell > main {
+		flex: 1;
+	}
+</style>

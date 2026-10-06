@@ -1,0 +1,151 @@
+---
+import Icon from './Icon.astro';
+import { SITE, AUTHOR, NAV, SOCIALS, FEATURES } from '@/data/site';
+
+const year = new Date().getFullYear();
+const groups = [
+	{ title: '逛逛', links: NAV.slice(0, 5) },
+	{ title: '更多', links: NAV.slice(5) },
+];
+---
+<footer class="site-footer" data-pagefind-ignore>
+	<div class="wrap footer-grid">
+		<div class="footer-brand">
+			<p class="footer-title font-display">{SITE.title}</p>
+			<p class="footer-desc">{SITE.description}</p>
+			<div class="footer-socials">
+				{SOCIALS.map((s) => (
+					<a href={s.href} class="icon-btn" title={s.label} aria-label={s.label} target="_blank" rel="noopener">
+						<Icon name={s.icon} size={16} />
+					</a>
+				))}
+			</div>
+		</div>
+
+		{groups.map((g) => (
+			<nav class="footer-col" aria-label={g.title}>
+				<p class="footer-col__title">{g.title}</p>
+				{g.links.map((l) => (
+					<a href={l.href}>{l.label}</a>
+				))}
+			</nav>
+		))}
+
+		<div class="footer-col">
+			<p class="footer-col__title">订阅</p>
+			<a href="/rss.xml">RSS 全文订阅</a>
+			<a href="/sitemap-index.xml">站点地图</a>
+			<a href={`mailto:${AUTHOR.email}`}>邮件联系</a>
+			{FEATURES.showCloudflareBadge && (
+				<span class="footer-badge" title="静态站点托管在 Cloudflare 全球边缘网络">
+					<Icon name="cloud" size={13} /> Powered by Cloudflare
+				</span>
+			)}
+		</div>
+	</div>
+
+	<div class="wrap footer-bottom">
+		<p>
+			© {SITE.since}–{year} {AUTHOR.name} · {AUTHOR.nameZh}
+		</p>
+		<p class="footer-made">
+			Built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> &amp;
+			<a href="https://tailwindcss.com" target="_blank" rel="noopener">Tailwind</a>
+			<span class="heart" aria-hidden="true">♥</span>
+		</p>
+	</div>
+</footer>
+
+<style>
+	.site-footer {
+		margin-top: 5rem;
+		border-top: 1px solid var(--c-border);
+		background: color-mix(in oklab, var(--c-bg-soft) 70%, transparent);
+	}
+	.footer-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
+		padding-block: 3rem 2rem;
+	}
+	.footer-title {
+		font-size: 1.25rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+	.footer-desc {
+		margin-top: 0.6rem;
+		max-width: 26rem;
+		font-size: 0.86rem;
+		line-height: 1.7;
+		color: var(--c-text-mute);
+	}
+	.footer-socials {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 1.1rem;
+	}
+	.footer-col {
+		display: grid;
+		gap: 0.55rem;
+		align-content: start;
+	}
+	.footer-col__title {
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--c-text-mute);
+	}
+	.footer-col a {
+		font-size: 0.88rem;
+		color: var(--c-text-soft);
+		text-decoration: none;
+		transition: color 0.2s var(--ease-soft), transform 0.2s var(--ease-soft);
+		width: fit-content;
+	}
+	.footer-col a:hover {
+		color: var(--c-accent-ink);
+		transform: translateX(2px);
+	}
+	.footer-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin-top: 0.4rem;
+		padding: 0.3rem 0.6rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+		width: fit-content;
+	}
+	.footer-bottom {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem 1.5rem;
+		justify-content: space-between;
+		padding-block: 1.1rem 1.6rem;
+		border-top: 1px solid var(--c-border);
+		font-size: 0.78rem;
+		color: var(--c-text-mute);
+	}
+	.footer-made a {
+		color: var(--c-text-soft);
+		text-decoration: none;
+	}
+	.footer-made a:hover {
+		color: var(--c-accent-ink);
+	}
+	.heart {
+		display: inline-block;
+		color: var(--c-accent);
+		animation: var(--animate-heart);
+	}
+	@media (min-width: 700px) {
+		.footer-grid {
+			grid-template-columns: 1.6fr 1fr 1fr 1fr;
+		}
+	}
+</style>

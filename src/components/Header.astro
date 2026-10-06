@@ -1,0 +1,333 @@
+---
+import Icon from './Icon.astro';
+import Brand from './Brand.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { NAV, FEATURES, SOCIALS } from '@/data/site';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+	href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
+
+const primary = NAV.slice(0, 7);
+const overflow = NAV.slice(7);
+---
+<header class="site-header" id="site-header" data-pagefind-ignore>
+	<div class="wrap header-inner">
+		<Brand />
+
+		<nav class="nav-desk" aria-label="主导航">
+			{primary.map((item) => (
+				<a href={item.href} class:list={['nav-link', { 'is-active': isActive(item.href) }]}>
+					{item.label}
+				</a>
+			))}
+			{overflow.length > 0 && (
+				<div class="nav-more">
+					<button type="button" class="nav-link nav-more__btn" aria-expanded="false" aria-haspopup="true">
+						更多
+						<Icon name="chevronDown" size={13} />
+					</button>
+					<div class="nav-more__panel card">
+						{overflow.map((item) => (
+							<a href={item.href} class="nav-more__item">
+								<Icon name={item.icon ?? 'link'} size={16} />
+								<span>
+									<strong>{item.label}</strong>
+									<em>{item.desc}</em>
+								</span>
+							</a>
+						))}
+					</div>
+				</div>
+			)}
+		</nav>
+
+		<div class="header-actions">
+			{FEATURES.search && (
+				<button type="button" class="search-trigger" data-open-palette aria-label="搜索">
+					<Icon name="search" size={15} />
+					<span class="search-trigger__text">搜索</span>
+					<span class="kbd">⌘K</span>
+				</button>
+			)}
+			{FEATURES.themeToggle && <ThemeToggle />}
+			<a class="icon-btn" href="/rss.xml" title="RSS 订阅" aria-label="RSS 订阅">
+				<Icon name="rss" size={16} />
+			</a>
+			<button type="button" class="icon-btn menu-btn" id="menu-btn" aria-label="菜单" aria-expanded="false">
+				<Icon name="menu" size={18} />
+			</button>
+		</div>
+	</div>
+
+	<!-- 移动端抽屉 -->
+	<div class="mobile-drawer" id="mobile-drawer" hidden>
+		<nav class="wrap drawer-inner" aria-label="移动端导航">
+			{NAV.map((item) => (
+				<a href={item.href} class:list={['drawer-link', { 'is-active': isActive(item.href) }]}>
+					<Icon name={item.icon ?? 'link'} size={17} />
+					<span>{item.label}</span>
+					<em>{item.desc}</em>
+				</a>
+			))}
+			<div class="drawer-socials">
+				{SOCIALS.map((s) => (
+					<a href={s.href} class="icon-btn" title={s.label} aria-label={s.label} target="_blank" rel="noopener">
+						<Icon name={s.icon} size={16} />
+					</a>
+				))}
+			</div>
+		</nav>
+	</div>
+
+	<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+</header>
+
+<style>
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 50;
+		border-bottom: 1px solid transparent;
+		transition: border-color 0.3s var(--ease-soft), background-color 0.3s var(--ease-soft);
+	}
+	.site-header.is-stuck {
+		border-bottom-color: var(--c-border);
+		background: color-mix(in oklab, var(--c-bg) 82%, transparent);
+		backdrop-filter: blur(14px) saturate(1.4);
+		-webkit-backdrop-filter: blur(14px) saturate(1.4);
+	}
+	.header-inner {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		min-height: 4.1rem;
+	}
+	.nav-desk {
+		display: none;
+		align-items: center;
+		gap: 0.15rem;
+		margin-inline: auto;
+	}
+	.nav-link {
+		position: relative;
+		padding: 0.4rem 0.7rem;
+		border-radius: 999px;
+		font-size: 0.86rem;
+		font-weight: 500;
+		color: var(--c-text-soft);
+		text-decoration: none;
+		transition: color 0.2s var(--ease-soft), background-color 0.2s var(--ease-soft);
+		white-space: nowrap;
+	}
+	.nav-link:hover {
+		color: var(--c-text);
+		background: var(--c-surface-2);
+	}
+	.nav-link.is-active {
+		color: var(--c-accent-ink);
+		background: var(--c-accent-soft);
+		font-weight: 600;
+	}
+	.nav-more {
+		position: relative;
+	}
+	.nav-more__btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+	.nav-more__panel {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 0.5rem);
+		width: 15rem;
+		padding: 0.4rem;
+		display: grid;
+		gap: 0.1rem;
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(-6px);
+		transition: all 0.24s var(--ease-soft);
+		z-index: 60;
+	}
+	.nav-more:hover .nav-more__panel,
+	.nav-more:focus-within .nav-more__panel,
+	.nav-more__panel.is-open {
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+	}
+	.nav-more__item {
+		display: flex;
+		gap: 0.6rem;
+		align-items: flex-start;
+		padding: 0.5rem 0.6rem;
+		border-radius: 0.7rem;
+		color: var(--c-text-soft);
+		text-decoration: none;
+		transition: background-color 0.2s var(--ease-soft);
+	}
+	.nav-more__item:hover {
+		background: var(--c-surface-2);
+		color: var(--c-text);
+	}
+	.nav-more__item span {
+		display: grid;
+	}
+	.nav-more__item strong {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+	.nav-more__item em {
+		font-style: normal;
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		margin-left: auto;
+	}
+	.search-trigger {
+		display: none;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.38rem 0.5rem 0.38rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+		color: var(--c-text-mute);
+		font-size: 0.8rem;
+		cursor: pointer;
+		transition: all 0.22s var(--ease-soft);
+	}
+	.search-trigger:hover {
+		color: var(--c-text);
+		border-color: var(--c-border-strong);
+	}
+	.icon-btn {
+		width: 2.1rem;
+		height: 2.1rem;
+	}
+	.menu-btn {
+		display: grid;
+	}
+
+	.mobile-drawer {
+		border-top: 1px solid var(--c-border);
+		border-bottom: 1px solid var(--c-border);
+		background: var(--c-surface);
+		max-height: min(70vh, 34rem);
+		overflow-y: auto;
+	}
+	.drawer-inner {
+		display: grid;
+		gap: 0.15rem;
+		padding-block: 0.9rem 1.2rem;
+	}
+	.drawer-link {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.1rem 0.65rem;
+		align-items: center;
+		padding: 0.6rem 0.7rem;
+		border-radius: 0.8rem;
+		color: var(--c-text-soft);
+		text-decoration: none;
+		font-size: 0.9rem;
+	}
+	.drawer-link em {
+		grid-column: 2;
+		font-style: normal;
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+	.drawer-link:hover,
+	.drawer-link.is-active {
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+	.drawer-socials {
+		display: flex;
+		gap: 0.5rem;
+		padding: 0.8rem 0.7rem 0;
+	}
+
+	.scroll-progress {
+		position: absolute;
+		left: 0;
+		bottom: -1px;
+		height: 2px;
+		width: 0;
+		background: linear-gradient(90deg, var(--c-accent), color-mix(in oklab, var(--c-accent) 40%, transparent));
+		transition: width 0.1s linear;
+	}
+
+	@media (min-width: 900px) {
+		.nav-desk { display: flex; }
+		.search-trigger { display: inline-flex; }
+		.menu-btn { display: none; }
+		.mobile-drawer { display: none !important; }
+	}
+	@media (min-width: 1100px) {
+		.search-trigger__text { display: inline; }
+	}
+</style>
+
+<script>
+	const header = document.getElementById('site-header');
+	const drawer = document.getElementById('mobile-drawer');
+	const menuBtn = document.getElementById('menu-btn');
+
+	menuBtn?.addEventListener('click', () => {
+		if (!drawer) return;
+		const open = drawer.hasAttribute('hidden');
+		drawer.toggleAttribute('hidden', !open);
+		menuBtn.setAttribute('aria-expanded', String(open));
+	});
+
+	drawer?.addEventListener('click', (e) => {
+		if ((e.target as HTMLElement).closest('a') && drawer && menuBtn) {
+			drawer.setAttribute('hidden', '');
+			menuBtn.setAttribute('aria-expanded', 'false');
+		}
+	});
+
+	const onScroll = () => {
+		const y = window.scrollY;
+		header?.classList.toggle('is-stuck', y > 8);
+		const bar = document.getElementById('scroll-progress');
+		if (bar) {
+			const h = document.documentElement.scrollHeight - window.innerHeight;
+			bar.style.width = `${h > 0 ? Math.min(100, (y / h) * 100) : 0}%`;
+		}
+	};
+	onScroll();
+	window.addEventListener('scroll', onScroll, { passive: true });
+	document.addEventListener('astro:after-swap', () => {
+		drawer?.setAttribute('hidden', '');
+		menuBtn?.setAttribute('aria-expanded', 'false');
+		onScroll();
+	});
+
+	// 「更多」面板：点击/键盘可开
+	const moreBtn = document.querySelector<HTMLButtonElement>('.nav-more__btn');
+	moreBtn?.addEventListener('click', () => {
+		const panel = document.querySelector('.nav-more__panel');
+		const open = panel?.classList.toggle('is-open');
+		moreBtn.setAttribute('aria-expanded', String(Boolean(open)));
+	});
+	document.addEventListener('click', (e) => {
+		const t = e.target as HTMLElement;
+		if (!t.closest('.nav-more')) {
+			document.querySelector('.nav-more__panel')?.classList.remove('is-open');
+			moreBtn?.setAttribute('aria-expanded', 'false');
+		}
+	});
+</script>

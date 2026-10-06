@@ -1,0 +1,272 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { FRIENDS } from '@/data/about';
+import { AUTHOR, SITE } from '@/data/site';
+
+const myCard = {
+	name: SITE.title,
+	url: SITE.url,
+	avatar: '🐈‍⬛',
+	desc: SITE.tagline,
+	tags: ['技术', '随笔', 'Cloudflare'],
+};
+---
+<BaseLayout title="友链" description="灰羽的朋友们，欢迎来串门。">
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="link" size={13} /> 友链</p>
+		<h1>认识的朋友们</h1>
+		<p>互联网上还有一些安静写字的人。这里放的是我常看的站点，欢迎去逛逛。</p>
+	</header>
+
+	<div class="wrap">
+		<div class="my-card card">
+			<div class="my-card__avatar" aria-hidden="true">{myCard.avatar}</div>
+			<div class="my-card__body">
+				<p class="my-card__label">我的友链信息（拿走不客气）</p>
+				<h2>{myCard.name}</h2>
+				<p class="my-card__desc">{myCard.desc}</p>
+				<p class="my-card__url"><code>{myCard.url}</code></p>
+			</div>
+			<button class="btn" id="copy-friend" type="button">
+				<Icon name="copy" size={14} /> 复制信息
+			</button>
+		</div>
+
+		<div class="friend-grid">
+			{FRIENDS.map((friend, i) => (
+				<a class="friend card card-hover" href={friend.url} target="_blank" rel="noopener" data-reveal>
+					<span class="friend__avatar" aria-hidden="true">{friend.avatar}</span>
+					<span class="friend__body">
+						<span class="friend__name">
+							{friend.name}
+							<Icon name="arrowUpRight" size={13} />
+						</span>
+						<span class="friend__desc">{friend.desc}</span>
+						<span class="friend__tags">
+							{friend.tags.map((t) => (
+								<em>#{t}</em>
+							))}
+						</span>
+					</span>
+					<span class="friend__no">{String(i + 1).padStart(2, '0')}</span>
+				</a>
+			))}
+		</div>
+
+		<section class="apply card">
+			<div class="apply__text">
+				<h2><Icon name="gift" size={17} /> 想交换友链？</h2>
+				<p>发邮件或留言时带上这几点就够了，我一般一周内回复：</p>
+				<ul>
+					<li>站点名称 + 一句话简介</li>
+					<li>网址（HTTPS，能正常访问）</li>
+					<li>一个代表你的 emoji 或头像图</li>
+					<li>先把我的链接挂上，我看到了就会回访</li>
+				</ul>
+			</div>
+			<div class="apply__actions">
+				<a class="btn btn-accent" href={`mailto:${AUTHOR.email}?subject=友链申请`}>
+					<Icon name="mail" size={15} /> 发邮件申请
+				</a>
+				<a class="btn" href="/guestbook/"><Icon name="chat" size={15} /> 去留言</a>
+			</div>
+			<p class="apply__note">
+				<Icon name="warn" size={13} /> 只收录原创内容为主、能持续更新的个人站点；纯采集站与广告站就不加了。
+			</p>
+		</section>
+	</div>
+</BaseLayout>
+
+<style>
+	.my-card {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1.1rem;
+		padding: 1.3rem 1.4rem;
+	}
+	.my-card__avatar {
+		display: grid;
+		place-items: center;
+		width: 3.4rem;
+		height: 3.4rem;
+		border-radius: var(--radius-md);
+		background: linear-gradient(150deg, var(--c-ink), color-mix(in oklab, var(--c-ink) 70%, var(--c-accent)));
+		font-size: 1.6rem;
+	}
+	.my-card__body {
+		flex: 1;
+		min-width: 14rem;
+	}
+	.my-card__label {
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--c-text-mute);
+	}
+	.my-card__body h2 {
+		margin-top: 0.2rem;
+		font-family: var(--font-display);
+		font-size: 1.25rem;
+		font-weight: 700;
+	}
+	.my-card__desc {
+		margin-top: 0.25rem;
+		font-size: 0.84rem;
+		color: var(--c-text-mute);
+	}
+	.my-card__url {
+		margin-top: 0.5rem;
+	}
+	.my-card__url code {
+		font-family: var(--font-mono);
+		font-size: 0.76rem;
+		padding: 0.2rem 0.5rem;
+		border-radius: 0.4rem;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+		color: var(--c-accent-ink);
+	}
+	.friend-grid {
+		display: grid;
+		gap: 0.9rem;
+		margin-top: 1.6rem;
+	}
+	.friend {
+		position: relative;
+		display: flex;
+		gap: 0.9rem;
+		padding: 1.1rem 1.2rem;
+		text-decoration: none;
+		color: inherit;
+		overflow: hidden;
+	}
+	.friend__avatar {
+		display: grid;
+		place-items: center;
+		width: 2.9rem;
+		height: 2.9rem;
+		flex: none;
+		border-radius: 0.9rem;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+		font-size: 1.4rem;
+	}
+	.friend__body {
+		display: grid;
+		gap: 0.3rem;
+		min-width: 0;
+	}
+	.friend__name {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.98rem;
+		font-weight: 700;
+		transition: color 0.22s var(--ease-soft);
+	}
+	.friend:hover .friend__name {
+		color: var(--c-accent-ink);
+	}
+	.friend__desc {
+		font-size: 0.82rem;
+		line-height: 1.7;
+		color: var(--c-text-mute);
+	}
+	.friend__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.2rem;
+	}
+	.friend__tags em {
+		font-style: normal;
+		font-size: 0.7rem;
+		color: var(--c-accent-ink);
+		opacity: 0.85;
+	}
+	.friend__no {
+		position: absolute;
+		right: 0.9rem;
+		top: 0.8rem;
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: var(--c-text-mute);
+		opacity: 0.5;
+	}
+	.apply {
+		display: grid;
+		gap: 1.2rem;
+		padding: 1.5rem;
+		margin-top: 2rem;
+	}
+	.apply__text h2 {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-family: var(--font-display);
+		font-size: 1.25rem;
+		font-weight: 700;
+	}
+	.apply__text p {
+		margin-top: 0.5rem;
+		font-size: 0.86rem;
+		color: var(--c-text-mute);
+	}
+	.apply__text ul {
+		display: grid;
+		gap: 0.4rem;
+		margin-top: 0.9rem;
+		list-style: none;
+		padding: 0;
+	}
+	.apply__text li {
+		position: relative;
+		padding-left: 1.1rem;
+		font-size: 0.85rem;
+		color: var(--c-text-soft);
+	}
+	.apply__text li::before {
+		content: '✓';
+		position: absolute;
+		left: 0;
+		color: var(--c-accent);
+		font-size: 0.8rem;
+	}
+	.apply__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-content: start;
+	}
+	.apply__note {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding-top: 1rem;
+		border-top: 1px dashed var(--c-border);
+		font-size: 0.78rem;
+		color: var(--c-text-mute);
+	}
+	@media (min-width: 700px) {
+		.friend-grid { grid-template-columns: repeat(2, 1fr); }
+		.apply { grid-template-columns: 1fr auto; }
+		.apply__note { grid-column: 1 / -1; }
+	}
+	@media (min-width: 1060px) {
+		.friend-grid { grid-template-columns: repeat(3, 1fr); }
+	}
+</style>
+
+<script>
+	const btn = document.getElementById('copy-friend');
+	btn?.addEventListener('click', async () => {
+		const text = `名称：灰羽 · Ash\n简介：一只有点丧、但很温柔的技术猫\n链接：${location.origin}\n头像：${location.origin}/favicon.svg`;
+		try {
+			await navigator.clipboard.writeText(text);
+			btn.innerHTML = '已复制 ✓';
+			setTimeout(() => (btn.innerHTML = '复制信息'), 1800);
+		} catch {}
+	});
+</script>

@@ -1,0 +1,123 @@
+---
+/**
+ * 浏览量 / 点赞：数据来自 Cloudflare KV（Pages Functions: /api/views, /api/like）
+ * - 纯静态托管（无 Functions）时组件会静默隐藏，不影响页面。
+ * - 想指向别的 Worker：改 site.ts → FEATURES.views.apiBase
+ */
+import Icon from './Icon.astro';
+import { FEATURES } from '@/data/site';
+
+interface Props {
+	slug: string;
+	class?: string;
+}
+const { slug, class: className = '' } = Astro.props;
+const apiBase = FEATURES.views.apiBase.replace(/\/$/, '');
+const enabled = FEATURES.views.enabled;
+---
+{
+	enabled && (
+		<div class:list={['views', className]} data-views-root data-slug={slug} data-api={apiBase} hidden>
+			<span class="views__item" data-views-count title="浏览量">
+				<Icon name="eye" size={14} />
+				<b data-views-value>—</b>
+			</span>
+			<button type="button" class="views__item views__like" data-like-btn title="点个赞" aria-pressed="false">
+				<Icon name="heart" size={14} />
+				<b data-like-value>—</b>
+			</button>
+		</div>
+	)
+}
+
+<style>
+	.views {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.views__item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.22rem 0.6rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+		font-size: 0.76rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--c-text-mute);
+	}
+	.views__like {
+		cursor: pointer;
+		transition: all 0.24s var(--ease-soft);
+	}
+	.views__like:hover {
+		color: var(--c-accent-ink);
+		border-color: var(--c-accent);
+		transform: translateY(-1px);
+	}
+	.views__like[aria-pressed='true'] {
+		color: var(--c-accent-ink);
+		border-color: var(--c-accent);
+		background: var(--c-accent-soft);
+	}
+	.views__like[aria-pressed='true'] svg {
+		animation: var(--animate-heart);
+	}
+</style>
+
+<script>
+	const root = document.querySelector<HTMLElement>('[data-views-root]');
+	if (root) {
+		const slug = root.dataset.slug || location.pathname;
+		const api = root.dataset.api || '';
+		const viewsValue = root.querySelector<HTMLElement>('[data-views-value]');
+		const likeValue = root.querySelector<HTMLElement>('[data-like-value]');
+		const likeBtn = root.querySelector<HTMLButtonElement>('[data-like-btn]');
+		const likedKey = `ash-liked:${slug}`;
+
+		const nf = new Intl.NumberFormat('zh-CN');
+		const show = (el: HTMLElement | null, n: number) => {
+			if (!el) return;
+			el.textContent = nf.format(n);
+			el.title = `${n} 次`;
+		};
+
+		fetch(`${api}/api/views?slug=${encodeURIComponent(slug)}`, { method: 'POST' })
+			.then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+			.then((data: { views?: number; likes?: number }) => {
+				root.removeAttribute('hidden');
+				show(viewsValue, data.views ?? 0);
+				show(likeValue, data.likes ?? 0);
+				const liked = localStorage.getItem(likedKey) === '1';
+				likeBtn?.setAttribute('aria-pressed', String(liked));
+			})
+			.catch(() => {
+				// 没有 KV 绑定（纯静态部署）→ 安静地不显示
+				root.setAttribute('hidden', '');
+			});
+
+		likeBtn?.addEventListener('click', async () => {
+			const liked = likeBtn.getAttribute('aria-pressed') === 'true';
+			likeBtn.disabled = true;
+			try {
+				const res = await fetch(`${api}/api/like`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ slug, undo: liked }),
+				});
+				const data = await res.json();
+				show(likeValue, data.likes ?? 0);
+				const next = !liked;
+				likeBtn.setAttribute('aria-pressed', String(next));
+				try {
+					localStorage.setItem(likedKey, next ? '1' : '0');
+				} catch {}
+			} catch {
+			} finally {
+				likeBtn.disabled = false;
+			}
+		});
+	}
+</script>

@@ -1,0 +1,30 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.astro/
+.wrangler/
+.vite/
+
+# Cloudflare / Wrangler 本地状态
+.dev.vars
+.dev.vars.*
+worker-configuration.d.ts
+
+# 环境变量
+.env
+.env.*
+!.env.example
+
+# 编辑器与系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 临时文件
+.shots/
+*.local

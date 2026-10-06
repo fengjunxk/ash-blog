@@ -1,0 +1,163 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { getPostMetas, tagsOf, siteStats } from '@/lib/blog';
+import { formatNumber } from '@/lib/utils';
+
+const posts = await getPostMetas();
+const tags = tagsOf(posts);
+const stats = siteStats(posts);
+const max = Math.max(1, ...tags.map((t) => t.count));
+const groups = new Map<string, typeof tags>();
+for (const t of tags) {
+	const key = /[a-zA-Z]/.test(t.name[0] ?? '') ? (t.name[0] ?? '#').toUpperCase() : (t.name[0] ?? '#');
+	const list = groups.get(key);
+	if (list) list.push(t);
+	else groups.set(key, [t]);
+}
+const sortedGroups = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'));
+---
+<BaseLayout title="标签" description={`灰羽用过的 ${tags.length} 个标签，一共 ${stats.count} 篇文章。`}>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="tag" size={13} /> 标签云</p>
+		<h1>关键词索引</h1>
+		<p>{tags.length} 个标签，字号越大代表写得越多。点一下就能看到该标签下的全部文章。</p>
+	</header>
+
+	<div class="wrap">
+		<div class="cloud card" data-pagefind-ignore>
+			{tags.map((tag) => {
+				const scale = 0.86 + (tag.count / max) * 0.62;
+				return (
+					<a
+						class="cloud__tag"
+						href={`/tags/${encodeURIComponent(tag.name)}/`}
+						style={`--scale:${scale.toFixed(2)};--w:${Math.round((tag.count / max) * 100)}`}
+					>
+						#{tag.name}
+						<sup>{tag.count}</sup>
+					</a>
+				);
+			})}
+		</div>
+
+		<div class="tag-groups">
+			{sortedGroups.map(([letter, list]) => (
+				<section class="tag-group" data-reveal>
+					<h2 class="tag-group__letter">{letter}</h2>
+					<ul>
+						{list.map((tag) => (
+							<li>
+								<a href={`/tags/${encodeURIComponent(tag.name)}/`}>
+									<span class="tag-group__name">#{tag.name}</span>
+									<span class="tag-group__bar" style={`--pct:${Math.round((tag.count / max) * 100)}%`} />
+									<span class="tag-group__count">{tag.count} 篇</span>
+								</a>
+							</li>
+						))}
+					</ul>
+				</section>
+			))}
+		</div>
+
+		<p class="footnote">
+			<Icon name="info" size={13} /> 全站 {stats.count} 篇文章，累计 {formatNumber(stats.words)} 字。
+		</p>
+	</div>
+</BaseLayout>
+
+<style>
+	.cloud {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.5rem 0.9rem;
+		padding: 1.4rem;
+	}
+	.cloud__tag {
+		font-size: calc(0.92rem * var(--scale));
+		font-weight: 600;
+		color: color-mix(in oklab, var(--c-accent-ink) calc(var(--w) * 1%), var(--c-text-mute));
+		text-decoration: none;
+		transition: all 0.24s var(--ease-spring);
+	}
+	.cloud__tag:hover {
+		color: var(--c-accent);
+		transform: translateY(-2px) scale(1.06);
+	}
+	.cloud__tag sup {
+		font-size: 0.6em;
+		margin-left: 0.15rem;
+		opacity: 0.6;
+		font-variant-numeric: tabular-nums;
+	}
+	.tag-groups {
+		display: grid;
+		gap: 1.6rem;
+		margin-top: 2.4rem;
+	}
+	.tag-group__letter {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin-bottom: 0.7rem;
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+		color: var(--c-accent-ink);
+	}
+	.tag-group__letter::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: var(--c-border);
+	}
+	.tag-group ul {
+		display: grid;
+		gap: 0.1rem;
+		list-style: none;
+		padding: 0;
+	}
+	.tag-group a {
+		position: relative;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.6rem;
+		align-items: center;
+		padding: 0.5rem 0.6rem;
+		border-radius: 0.6rem;
+		text-decoration: none;
+		color: var(--c-text-soft);
+		overflow: hidden;
+		transition: background-color 0.2s var(--ease-soft);
+	}
+	.tag-group a:hover {
+		background: var(--c-surface);
+	}
+	.tag-group__name {
+		font-size: 0.88rem;
+	}
+	.tag-group__count {
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+	.tag-group__bar {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		height: 2px;
+		width: var(--pct, 0%);
+		background: color-mix(in oklab, var(--c-accent) 45%, transparent);
+		border-radius: 999px;
+	}
+	.footnote {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 2.4rem;
+		font-size: 0.8rem;
+		color: var(--c-text-mute);
+	}
+	@media (min-width: 720px) {
+		.tag-groups { grid-template-columns: repeat(2, 1fr); gap: 1.4rem 2.4rem; }
+	}
+</style>

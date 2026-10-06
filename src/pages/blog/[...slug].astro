@@ -1,0 +1,25 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import PostLayout from '@/layouts/PostLayout.astro';
+import { getPosts, toMeta, relatedPosts, neighbours, postSlug } from '@/lib/blog';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+	const posts = await getPosts();
+	return posts.map((post) => ({
+		params: { slug: postSlug(post) },
+		props: { post, all: posts.map(toMeta) },
+	}));
+}) satisfies GetStaticPaths;
+
+const { post, all } = Astro.props;
+const meta = toMeta(post);
+const { Content } = await render(post);
+const { prev, next } = neighbours(meta, all);
+const related = relatedPosts(meta, all, 3);
+---
+<PostLayout post={meta} body={post.body ?? ''} prev={prev} next={next} related={related}>
+	<Content slot="content" />
+</PostLayout>

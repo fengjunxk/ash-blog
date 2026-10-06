@@ -1,0 +1,129 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { getPostMetas, categoriesOf } from '@/lib/blog';
+import { formatDate, formatNumber } from '@/lib/utils';
+
+const posts = await getPostMetas();
+const categories = categoriesOf(posts);
+const max = Math.max(1, ...categories.map((c) => c.count));
+---
+<BaseLayout title="分类" description="按主题浏览灰羽的文章分类。">
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="folder" size={13} /> 分类</p>
+		<h1>按主题逛逛</h1>
+		<p>一共 {categories.length} 个分类。点进去能看到该分类下的全部文章与写作统计。</p>
+	</header>
+
+	<div class="wrap cat-grid">
+		{categories.map((cat, i) => {
+			const sample = posts.filter((p) => p.category === cat.name).slice(0, 3);
+			const words = posts.filter((p) => p.category === cat.name).reduce((s, p) => s + p.words, 0);
+			return (
+				<a class="cat-card card card-hover" href={`/categories/${encodeURIComponent(cat.name)}/`} data-reveal>
+					<div class="cat-card__top">
+						<span class="cat-card__index">{String(i + 1).padStart(2, '0')}</span>
+						<span class="cat-card__count">{cat.count} 篇</span>
+					</div>
+					<h2 class="cat-card__name">{cat.name}</h2>
+					<div class="cat-card__bar" aria-hidden="true">
+						<span style={`width:${Math.round((cat.count / max) * 100)}%`}></span>
+					</div>
+					<ul class="cat-card__list">
+						{sample.map((p) => (
+							<li>{p.title}</li>
+						))}
+					</ul>
+					<p class="cat-card__foot">
+						最近更新 {formatDate(cat.latest, 'iso')} · 约 {formatNumber(words)} 字
+					</p>
+				</a>
+			);
+		})}
+	</div>
+</BaseLayout>
+
+<style>
+	.cat-grid {
+		display: grid;
+		gap: 1rem;
+		padding-bottom: 1rem;
+	}
+	.cat-card {
+		display: grid;
+		gap: 0.7rem;
+		padding: 1.25rem 1.3rem 1.35rem;
+		text-decoration: none;
+		color: inherit;
+	}
+	.cat-card__top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.cat-card__index {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+		letter-spacing: 0.1em;
+	}
+	.cat-card__count {
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+		font-size: 0.7rem;
+		font-weight: 700;
+	}
+	.cat-card__name {
+		font-family: var(--font-display);
+		font-size: 1.35rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+	.cat-card__bar {
+		height: 3px;
+		border-radius: 999px;
+		background: var(--c-surface-2);
+		overflow: hidden;
+	}
+	.cat-card__bar span {
+		display: block;
+		height: 100%;
+		border-radius: 999px;
+		background: linear-gradient(90deg, var(--c-accent), color-mix(in oklab, var(--c-accent) 40%, transparent));
+		transition: width 0.5s var(--ease-soft);
+	}
+	.cat-card__list {
+		display: grid;
+		gap: 0.25rem;
+		list-style: none;
+		padding: 0;
+		margin: 0.2rem 0 0;
+	}
+	.cat-card__list li {
+		font-size: 0.82rem;
+		color: var(--c-text-mute);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.cat-card__list li::before {
+		content: '·';
+		margin-right: 0.4rem;
+		color: var(--c-accent);
+	}
+	.cat-card__foot {
+		margin-top: auto;
+		padding-top: 0.5rem;
+		border-top: 1px dashed var(--c-border);
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+	@media (min-width: 640px) {
+		.cat-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1000px) {
+		.cat-grid { grid-template-columns: repeat(3, 1fr); }
+	}
+</style>

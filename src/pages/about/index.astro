@@ -1,0 +1,437 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Mascot from '@/components/Mascot.astro';
+import { AUTHOR, SOCIALS } from '@/data/site';
+import { SKILLS, TIMELINE, NOW, FAQ } from '@/data/about';
+import { getPostMetas, siteStats, tagsOf } from '@/lib/blog';
+import { formatNumber } from '@/lib/utils';
+
+const posts = await getPostMetas();
+const stats = siteStats(posts);
+const tags = tagsOf(posts);
+
+const stack = [
+	{ name: 'Astro', desc: '站点框架', icon: 'rocket' },
+	{ name: 'Tailwind CSS v4', desc: '样式与设计令牌', icon: 'palette' },
+	{ name: 'TypeScript', desc: '类型安全', icon: 'code' },
+	{ name: 'Cloudflare Pages', desc: '静态托管 + CDN', icon: 'cloud' },
+	{ name: 'Cloudflare KV', desc: '浏览量 / 点赞', icon: 'database' },
+	{ name: 'Pagefind', desc: '全文搜索索引', icon: 'search' },
+	{ name: 'Giscus', desc: '评论（GitHub Discussions）', icon: 'chat' },
+	{ name: 'Shiki', desc: '代码高亮', icon: 'terminal' },
+];
+---
+<BaseLayout title="关于" description={`关于 ${AUTHOR.name} 与这个站点：技术栈、写作规范、联系方式。`}>
+	<div class="wrap about-hero">
+		<div class="about-hero__text">
+			<p class="page-hero__eyebrow"><Icon name="cat" size={13} /> 关于</p>
+			<h1>嗨，我是{AUTHOR.name}</h1>
+			<p class="lead">{AUTHOR.bio}</p>
+			<div class="about-meta">
+				<span><Icon name="pin" size={13} /> {AUTHOR.location}</span>
+				<span><Icon name="mail" size={13} /> {AUTHOR.email}</span>
+				<span><Icon name="pen" size={13} /> {stats.count} 篇 / {formatNumber(stats.words)} 字</span>
+			</div>
+			<div class="about-socials">
+				{SOCIALS.map((s) => (
+					<a class="btn" href={s.href}><Icon name={s.icon} size={15} /> {s.label}</a>
+				))}
+			</div>
+		</div>
+		<div class="about-hero__art">
+			<Mascot size={280} />
+		</div>
+	</div>
+
+	<div class="wrap">
+		<section class="block" id="now">
+			<h2 class="section-title"><Icon name="zap" size={16} /> 现在</h2>
+			<p class="section-sub">这一段时间在忙的事，会不时更新</p>
+			<ul class="now-grid">
+				{NOW.map((item) => (
+					<li class="card">
+						<em>{item.label}</em>
+						<span>{item.value}</span>
+					</li>
+				))}
+			</ul>
+		</section>
+
+		<section class="block" id="skills">
+			<h2 class="section-title"><Icon name="chart" size={16} /> 会的东西</h2>
+			<p class="section-sub">按「能用它把事做完」的自信程度打分，纯主观</p>
+			<ul class="skills">
+				{SKILLS.map((skill) => (
+					<li>
+						<div class="skills__head">
+							<span class="skills__name">{skill.name}</span>
+							<span class="skills__note">{skill.note}</span>
+							<span class="skills__level">{skill.level}</span>
+						</div>
+						<div class="skills__track">
+							<span class="skills__fill" style={`--pct:${skill.level}%`} />
+						</div>
+					</li>
+				))}
+			</ul>
+		</section>
+
+		<section class="block" id="timeline">
+			<h2 class="section-title"><Icon name="clock" size={16} /> 时间线</h2>
+			<ol class="timeline">
+				{TIMELINE.map((item) => (
+					<li>
+						<span class="timeline__year">{item.year}</span>
+						<div class="timeline__body">
+							<strong>{item.title}</strong>
+							<p>{item.desc}</p>
+						</div>
+					</li>
+				))}
+			</ol>
+		</section>
+
+		<section class="block" id="writing">
+			<h2 class="section-title"><Icon name="feather" size={16} /> 这个站点</h2>
+			<p class="section-sub">技术栈与写作规范</p>
+			<div class="stack-grid">
+				{stack.map((item) => (
+					<div class="stack card card-hover">
+						<span class="stack__icon"><Icon name={item.icon} size={16} /></span>
+						<div>
+							<strong>{item.name}</strong>
+							<em>{item.desc}</em>
+						</div>
+					</div>
+				))}
+			</div>
+			<div class="rules card">
+				<h3>写作与转载</h3>
+				<ul>
+					<li>文章采用 <b>CC BY-NC-SA 4.0</b> 协议，转载请注明作者与原文链接。</li>
+					<li>代码片段可以随意取用，不用署名，但请自己测一遍。</li>
+					<li>发现错别字或者内容有误，欢迎邮件告诉我，我会改并标注。</li>
+					<li>所有观点仅代表个人，与雇主无关。</li>
+				</ul>
+				<p class="rules__foot">
+					全站共有 {stats.tags} 个标签，常用的有
+					{tags.slice(0, 4).map((t) => (
+						<a href={`/tags/${encodeURIComponent(t.name)}/`}>#{t.name}</a>
+					))}
+					。
+				</p>
+			</div>
+		</section>
+
+		<section class="block" id="faq">
+			<h2 class="section-title"><Icon name="info" size={16} /> 常见问题</h2>
+			<div class="faq">
+				{FAQ.map((item, i) => (
+					<details class="faq__item card" open={i === 0}>
+						<summary>
+							<span>{item.q}</span>
+							<Icon name="chevronDown" size={16} />
+						</summary>
+						<p>{item.a}</p>
+					</details>
+				))}
+			</div>
+		</section>
+
+		<section class="block contact card">
+			<div>
+				<h2>想聊点什么？</h2>
+				<p>技术、合作、或者只是想说句「你这个配色挺好看」，都可以直接找我。</p>
+			</div>
+			<div class="contact__actions">
+				<a class="btn btn-accent" href={`mailto:${AUTHOR.email}`}><Icon name="mail" size={15} /> 发邮件</a>
+				<a class="btn" href="/guestbook/"><Icon name="chat" size={15} /> 留言板</a>
+			</div>
+		</section>
+	</div>
+</BaseLayout>
+
+<style>
+	.about-hero {
+		display: grid;
+		gap: 2rem;
+		align-items: center;
+		padding-block: 2.6rem 1rem;
+	}
+	.about-hero h1 {
+		margin-top: 0.9rem;
+		font-family: var(--font-display);
+		font-size: clamp(1.9rem, 1.5rem + 2.4vw, 2.9rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+	}
+	.lead {
+		margin-top: 0.9rem;
+		max-width: 36rem;
+		font-size: 1rem;
+		line-height: 1.9;
+		color: var(--c-text-soft);
+	}
+	.about-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.9rem;
+		margin-top: 1.2rem;
+		font-size: 0.82rem;
+		color: var(--c-text-mute);
+	}
+	.about-meta span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.about-socials {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 1.5rem;
+	}
+	.about-hero__art {
+		display: grid;
+		place-items: center;
+	}
+	.block {
+		padding-block: 2rem;
+	}
+	.now-grid {
+		display: grid;
+		gap: 0.8rem;
+		margin-top: 1rem;
+		list-style: none;
+		padding: 0;
+	}
+	.now-grid li {
+		display: grid;
+		gap: 0.3rem;
+		padding: 1rem 1.1rem;
+	}
+	.now-grid em {
+		font-style: normal;
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--c-accent-ink);
+		font-weight: 700;
+	}
+	.now-grid span {
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: var(--c-text-soft);
+	}
+	.skills {
+		display: grid;
+		gap: 1rem;
+		margin-top: 1rem;
+		list-style: none;
+		padding: 0;
+	}
+	.skills__head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		margin-bottom: 0.4rem;
+	}
+	.skills__name {
+		font-size: 0.9rem;
+		font-weight: 600;
+	}
+	.skills__note {
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+	}
+	.skills__level {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+	}
+	.skills__track {
+		height: 0.5rem;
+		border-radius: 999px;
+		background: var(--c-surface-2);
+		overflow: hidden;
+	}
+	.skills__fill {
+		display: block;
+		height: 100%;
+		width: var(--pct, 0%);
+		border-radius: 999px;
+		background: linear-gradient(90deg, var(--c-accent), color-mix(in oklab, var(--c-accent) 40%, transparent));
+		animation: grow 1s var(--ease-soft) both;
+	}
+	@keyframes grow {
+		from { width: 0; }
+	}
+	.timeline {
+		display: grid;
+		gap: 1.1rem;
+		margin-top: 1rem;
+		list-style: none;
+		padding: 0;
+	}
+	.timeline li {
+		display: grid;
+		grid-template-columns: 3.4rem 1fr;
+		gap: 1rem;
+	}
+	.timeline__year {
+		font-family: var(--font-mono);
+		font-size: 0.84rem;
+		color: var(--c-accent-ink);
+		padding-top: 0.1rem;
+	}
+	.timeline__body strong {
+		font-size: 0.95rem;
+	}
+	.timeline__body p {
+		margin-top: 0.3rem;
+		font-size: 0.85rem;
+		line-height: 1.75;
+		color: var(--c-text-mute);
+	}
+	.stack-grid {
+		display: grid;
+		gap: 0.7rem;
+		margin-top: 1rem;
+	}
+	.stack {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.85rem 0.95rem;
+	}
+	.stack__icon {
+		display: grid;
+		place-items: center;
+		width: 2.1rem;
+		height: 2.1rem;
+		flex: none;
+		border-radius: 0.65rem;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+		color: var(--c-accent-ink);
+	}
+	.stack strong {
+		display: block;
+		font-size: 0.88rem;
+	}
+	.stack em {
+		font-style: normal;
+		font-size: 0.74rem;
+		color: var(--c-text-mute);
+	}
+	.rules {
+		margin-top: 1rem;
+		padding: 1.2rem 1.3rem 1.3rem;
+	}
+	.rules h3 {
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+	.rules ul {
+		display: grid;
+		gap: 0.5rem;
+		margin-top: 0.8rem;
+		padding-left: 1.1rem;
+		list-style: none;
+	}
+	.rules li {
+		position: relative;
+		font-size: 0.85rem;
+		line-height: 1.75;
+		color: var(--c-text-soft);
+	}
+	.rules li::before {
+		content: '·';
+		position: absolute;
+		left: -0.9rem;
+		color: var(--c-accent);
+		font-weight: 700;
+	}
+	.rules__foot {
+		margin-top: 0.9rem;
+		padding-top: 0.8rem;
+		border-top: 1px dashed var(--c-border);
+		font-size: 0.8rem;
+		color: var(--c-text-mute);
+	}
+	.rules__foot a {
+		color: var(--c-accent-ink);
+		text-decoration: none;
+		margin-left: 0.25rem;
+	}
+	.faq {
+		display: grid;
+		gap: 0.6rem;
+		margin-top: 1rem;
+	}
+	.faq__item {
+		padding: 0.2rem 1rem;
+	}
+	.faq__item summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		padding: 0.85rem 0;
+		font-size: 0.92rem;
+		font-weight: 600;
+		cursor: pointer;
+		list-style: none;
+	}
+	.faq__item summary::-webkit-details-marker {
+		display: none;
+	}
+	.faq__item summary svg {
+		flex: none;
+		color: var(--c-text-mute);
+		transition: transform 0.25s var(--ease-soft);
+	}
+	.faq__item[open] summary svg {
+		transform: rotate(180deg);
+		color: var(--c-accent-ink);
+	}
+	.faq__item p {
+		padding-bottom: 1rem;
+		font-size: 0.86rem;
+		line-height: 1.85;
+		color: var(--c-text-mute);
+	}
+	.contact {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 1rem;
+		padding: 1.5rem;
+		margin-bottom: 1rem;
+	}
+	.contact h2 {
+		font-family: var(--font-display);
+		font-size: 1.3rem;
+		font-weight: 700;
+	}
+	.contact p {
+		margin-top: 0.35rem;
+		font-size: 0.86rem;
+		color: var(--c-text-mute);
+	}
+	.contact__actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+	@media (min-width: 640px) {
+		.now-grid { grid-template-columns: repeat(2, 1fr); }
+		.stack-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 900px) {
+		.about-hero { grid-template-columns: 1.3fr 0.7fr; }
+		.stack-grid { grid-template-columns: repeat(4, 1fr); }
+	}
+</style>

@@ -1,0 +1,25 @@
+---
+/**
+ * 访问统计：Cloudflare Web Analytics / Umami
+ * token 留空则不输出任何脚本（默认状态）。
+ * 具体填值位置见 src/data/site.ts → FEATURES.analytics
+ */
+import { FEATURES } from '@/data/site';
+
+const { cloudflareToken, umamiScript, umamiWebsiteId } = FEATURES.analytics;
+---
+{
+	cloudflareToken && (
+		<script
+			is:inline
+			defer
+			src="https://static.cloudflareinsights.com/beacon.min.js"
+			data-cf-beacon={JSON.stringify({ token: cloudflareToken, spa: true })}
+		/>
+	)
+}
+{
+	umamiScript && umamiWebsiteId && (
+		<script is:inline async src={umamiScript} data-website-id={umamiWebsiteId} />
+	)
+}

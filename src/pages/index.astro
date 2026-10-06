@@ -1,0 +1,482 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import Heatmap from '@/components/Heatmap.astro';
+import Mascot from '@/components/Mascot.astro';
+import { getPostMetas, categoriesOf, tagsOf, heatmapOf, siteStats } from '@/lib/blog';
+import { formatNumber, timeAgo } from '@/lib/utils';
+import { AUTHOR, SITE, SOCIALS, HERO_STATS_LABEL } from '@/data/site';
+import { NOW } from '@/data/about';
+
+const posts = await getPostMetas();
+const featured = posts.filter((p) => p.pinned).slice(0, 3);
+const hero = featured.length ? featured : posts.slice(0, 3);
+const [lead, ...rest] = hero;
+const latest = posts.slice(0, 6);
+const categories = categoriesOf(posts);
+const tags = tagsOf(posts).slice(0, 16);
+const heat = heatmapOf(posts, 168);
+const stats = siteStats(posts);
+const latestUpdate = posts[0]?.published;
+---
+<BaseLayout description={SITE.description}>
+	<!-- ===== Hero ===== -->
+	<section class="hero">
+		<div class="hero__glow" aria-hidden="true"></div>
+		<div class="wrap hero__inner">
+			<div class="hero__text">
+				<p class="hero__eyebrow">
+					<span class="pulse" aria-hidden="true"></span>
+					{AUTHOR.location} · 目前在线
+				</p>
+				<h1 class="hero__title">
+					你好，我是 <span class="text-gradient">{AUTHOR.name}</span>
+					<span class="hero__wave" aria-hidden="true">👋</span>
+				</h1>
+				<p class="hero__tagline">{SITE.tagline}</p>
+				<p class="hero__bio">{AUTHOR.bio}</p>
+
+				<div class="hero__actions">
+					<a class="btn btn-accent" href="/blog/">
+						<Icon name="book" size={15} /> 开始阅读
+					</a>
+					<a class="btn" href="/about/">
+						<Icon name="cat" size={15} /> 关于我
+					</a>
+					<a class="btn" href="/rss.xml">
+						<Icon name="rss" size={15} /> RSS
+					</a>
+				</div>
+
+				<ul class="hero__stats">
+					<li>
+						<b>{stats.count}</b>
+						<span>{HERO_STATS_LABEL.posts}</span>
+					</li>
+					<li>
+						<b>{formatNumber(stats.words)}</b>
+						<span>{HERO_STATS_LABEL.words}</span>
+					</li>
+					<li>
+						<b>{stats.tags}</b>
+						<span>个标签</span>
+					</li>
+					<li>
+						<b>{latestUpdate ? timeAgo(latestUpdate) : '—'}</b>
+						<span>最近更新</span>
+					</li>
+				</ul>
+			</div>
+
+			<div class="hero__art">
+				<Mascot size={316} />
+				<div class="hero__card card">
+					<p class="hero__card-title">
+						<Icon name="zap" size={14} /> 最近在忙
+					</p>
+					<ul>
+						{NOW.slice(0, 3).map((item) => (
+							<li>
+								<em>{item.label}</em>
+								<span>{item.value}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===== 精选 ===== -->
+	{lead && (
+		<section class="wrap section" data-reveal>
+			<div class="section-head">
+				<div>
+					<h2 class="section-title">先看这几篇</h2>
+					<p class="section-sub">自己觉得写得还行的，以及被置顶的</p>
+				</div>
+				<a class="section-link" href="/blog/">全部文章 <Icon name="arrowRight" size={13} /></a>
+			</div>
+			<div class="feature-grid">
+				<PostCard post={lead} variant="feature" index={0} />
+				<div class="feature-side">
+					{rest.map((post, i) => (
+						<PostCard post={post} index={i + 1} />
+					))}
+				</div>
+			</div>
+		</section>
+	)}
+
+	<!-- ===== 最新 ===== -->
+	<section class="wrap section" data-reveal>
+		<div class="section-head">
+			<div>
+				<h2 class="section-title">最近写的</h2>
+				<p class="section-sub">想到什么写什么，更新频率随缘</p>
+			</div>
+			<a class="section-link" href="/archive/">时间线归档 <Icon name="arrowRight" size={13} /></a>
+		</div>
+		<div class="card-grid">
+			{latest.map((post, i) => (
+				<PostCard post={post} index={i} />
+			))}
+		</div>
+	</section>
+
+	<!-- ===== 热力图 + 分类 ===== -->
+	<section class="wrap section" data-reveal>
+		<div class="split">
+			<div class="card panel">
+				<h2 class="panel__title">
+					<Icon name="flame" size={16} /> 写作节奏
+				</h2>
+				<Heatmap data={heat} />
+			</div>
+			<div class="card panel">
+				<h2 class="panel__title">
+					<Icon name="folder" size={16} /> 常写的分类
+				</h2>
+				<ul class="cat-list">
+					{categories.map((cat) => (
+						<li>
+							<a href={`/categories/${encodeURIComponent(cat.name)}/`}>
+								<span class="cat-list__name">{cat.name}</span>
+								<span class="cat-list__count">{cat.count}</span>
+								<span class="cat-list__bar" style={`--pct:${Math.round((cat.count / posts.length) * 100)}%`} />
+							</a>
+						</li>
+					))}
+				</ul>
+				<div class="tag-cloud">
+					{tags.map((tag) => (
+						<a class="chip" href={`/tags/${encodeURIComponent(tag.name)}/`}>
+							#{tag.name}
+							<em>{tag.count}</em>
+						</a>
+					))}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===== 订阅 CTA ===== -->
+	<section class="wrap section" data-reveal>
+		<div class="cta card">
+			<div class="cta__text">
+				<h2>不想错过更新？</h2>
+				<p>用 RSS 订阅最省事，没有算法，也没有推送打扰。也可以顺手逛逛留言板。</p>
+			</div>
+			<div class="cta__actions">
+				<a class="btn btn-accent" href="/rss.xml"><Icon name="rss" size={15} /> 订阅 RSS</a>
+				<a class="btn" href="/guestbook/"><Icon name="chat" size={15} /> 去留言板</a>
+			</div>
+			<div class="cta__socials">
+				{SOCIALS.map((s) => (
+					<a class="icon-btn" href={s.href} title={s.label} aria-label={s.label}><Icon name={s.icon} size={16} /></a>
+				))}
+			</div>
+		</div>
+	</section>
+</BaseLayout>
+
+<style>
+	/* —— Hero —— */
+	.hero {
+		position: relative;
+		overflow: hidden;
+		padding-block: 3rem 1rem;
+	}
+	.hero__glow {
+		position: absolute;
+		inset: -20% -10% auto -10%;
+		height: 42rem;
+		background:
+			radial-gradient(38rem 24rem at 18% 22%, color-mix(in oklab, var(--c-accent) 16%, transparent), transparent 70%),
+			radial-gradient(30rem 20rem at 82% 8%, color-mix(in oklab, var(--color-mauve) 14%, transparent), transparent 70%);
+		pointer-events: none;
+	}
+	.hero__inner {
+		position: relative;
+		display: grid;
+		gap: 2.5rem;
+		align-items: center;
+	}
+	.hero__eyebrow {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.3rem 0.75rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: color-mix(in oklab, var(--c-surface) 80%, transparent);
+		backdrop-filter: blur(8px);
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+	}
+	.pulse {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 999px;
+		background: var(--color-sage);
+		box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-sage) 60%, transparent);
+		animation: pulse 2.2s infinite;
+	}
+	@keyframes pulse {
+		70% { box-shadow: 0 0 0 0.5rem transparent; }
+		100% { box-shadow: 0 0 0 0 transparent; }
+	}
+	.hero__title {
+		margin-top: 1.1rem;
+		font-family: var(--font-display);
+		font-size: clamp(2rem, 1.5rem + 3.2vw, 3.35rem);
+		font-weight: 700;
+		letter-spacing: -0.035em;
+		line-height: 1.1;
+	}
+	.hero__wave {
+		display: inline-block;
+		animation: wave 2.6s var(--ease-soft) infinite;
+		transform-origin: 70% 70%;
+	}
+	@keyframes wave {
+		0%, 60%, 100% { transform: rotate(0deg); }
+		70% { transform: rotate(16deg); }
+		80% { transform: rotate(-8deg); }
+		90% { transform: rotate(12deg); }
+	}
+	.hero__tagline {
+		margin-top: 1rem;
+		font-size: 1.08rem;
+		font-weight: 600;
+		color: var(--c-accent-ink);
+	}
+	.hero__bio {
+		margin-top: 0.7rem;
+		max-width: 34rem;
+		font-size: 0.96rem;
+		line-height: 1.85;
+		color: var(--c-text-soft);
+	}
+	.hero__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: 1.6rem;
+	}
+	.hero__stats {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.9rem 1.4rem;
+		margin-top: 2.2rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid var(--c-border);
+		list-style: none;
+	}
+	.hero__stats li {
+		display: grid;
+		gap: 0.15rem;
+	}
+	.hero__stats b {
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+	.hero__stats span {
+		font-size: 0.75rem;
+		color: var(--c-text-mute);
+	}
+
+	.hero__art {
+		position: relative;
+		display: grid;
+		justify-items: center;
+		gap: 1.2rem;
+	}
+	.hero__card {
+		width: min(20rem, 100%);
+		padding: 1rem 1.1rem;
+		backdrop-filter: blur(8px);
+	}
+	.hero__card-title {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--c-accent-ink);
+	}
+	.hero__card ul {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 0.8rem;
+		list-style: none;
+		padding: 0;
+	}
+	.hero__card li {
+		display: grid;
+		gap: 0.1rem;
+	}
+	.hero__card em {
+		font-style: normal;
+		font-size: 0.68rem;
+		color: var(--c-text-mute);
+	}
+	.hero__card span {
+		font-size: 0.84rem;
+		color: var(--c-text-soft);
+		line-height: 1.5;
+	}
+
+	/* —— 通用区块 —— */
+	.section {
+		padding-block: 2.4rem;
+	}
+	.feature-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.feature-side {
+		display: grid;
+		gap: 1rem;
+	}
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.split {
+		display: grid;
+		gap: 1rem;
+	}
+	.panel {
+		padding: 1.25rem 1.3rem 1.4rem;
+	}
+	.panel__title {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-bottom: 1rem;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+	.cat-list {
+		display: grid;
+		gap: 0.15rem;
+		list-style: none;
+		padding: 0;
+	}
+	.cat-list a {
+		position: relative;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 0.5rem;
+		align-items: center;
+		padding: 0.55rem 0.6rem;
+		border-radius: 0.65rem;
+		text-decoration: none;
+		color: var(--c-text-soft);
+		overflow: hidden;
+		transition: background-color 0.22s var(--ease-soft);
+	}
+	.cat-list a:hover {
+		background: var(--c-surface-2);
+	}
+	.cat-list__name {
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+	.cat-list__count {
+		font-size: 0.75rem;
+		color: var(--c-text-mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.cat-list__bar {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		height: 2px;
+		width: var(--pct, 0%);
+		background: color-mix(in oklab, var(--c-accent) 55%, transparent);
+		border-radius: 999px;
+	}
+	.tag-cloud {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1.2rem;
+		padding-top: 1.1rem;
+		border-top: 1px dashed var(--c-border);
+	}
+	.tag-cloud em {
+		font-style: normal;
+		font-size: 0.68rem;
+		opacity: 0.6;
+	}
+
+	/* —— CTA —— */
+	.cta {
+		position: relative;
+		display: grid;
+		gap: 1.2rem;
+		align-items: center;
+		padding: 1.8rem;
+		overflow: hidden;
+		background:
+			radial-gradient(24rem 14rem at 88% 10%, color-mix(in oklab, var(--c-accent) 18%, transparent), transparent 70%),
+			var(--c-surface);
+	}
+	.cta__text h2 {
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+	.cta__text p {
+		margin-top: 0.5rem;
+		max-width: 32rem;
+		font-size: 0.9rem;
+		line-height: 1.8;
+		color: var(--c-text-mute);
+	}
+	.cta__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+	}
+	.cta__socials {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	@media (min-width: 640px) {
+		.hero__stats {
+			grid-template-columns: repeat(4, 1fr);
+		}
+		.card-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (min-width: 960px) {
+		.hero__inner {
+			grid-template-columns: 1.15fr 0.85fr;
+			gap: 3rem;
+		}
+		.feature-grid {
+			grid-template-columns: 1.25fr 1fr;
+		}
+		.card-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.split {
+			grid-template-columns: 1.35fr 1fr;
+		}
+		.cta {
+			grid-template-columns: 1fr auto;
+		}
+		.cta__socials {
+			grid-column: 1 / -1;
+		}
+	}
+</style>

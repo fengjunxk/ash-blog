@@ -1,0 +1,116 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import Heatmap from '@/components/Heatmap.astro';
+import { getPostMetas, postsByCategory, heatmapOf } from '@/lib/blog';
+import { formatDate, formatNumber } from '@/lib/utils';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+	const posts = await getPostMetas();
+	return [...postsByCategory(posts).entries()].map(([category, categoryPosts]) => ({
+		params: { category },
+		props: { category, posts: categoryPosts },
+	}));
+}) satisfies GetStaticPaths;
+
+const { category, posts } = Astro.props;
+const words = posts.reduce((s, p) => s + p.words, 0);
+const minutes = posts.reduce((s, p) => s + p.minutes, 0);
+const heat = heatmapOf(posts, 140);
+const tags = [...new Set(posts.flatMap((p) => p.tags))]
+	.map((name) => ({ name, count: posts.filter((p) => p.tags.includes(name)).length }))
+	.sort((a, b) => b.count - a.count);
+const first = posts[posts.length - 1];
+const last = posts[0];
+---
+<BaseLayout
+	title={`${category} 分类`}
+	description={`「${category}」分类下的 ${posts.length} 篇文章。`}
+>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="folder" size={13} /> 分类</p>
+		<h1>{category}</h1>
+		<p>
+			{posts.length} 篇文章 · {formatNumber(words)} 字 · 大约要读 {minutes} 分钟。
+			{first && last && <>从 {formatDate(first.published, 'iso')} 写到 {formatDate(last.published, 'iso')}。</>}
+		</p>
+	</header>
+
+	<div class="wrap">
+		<div class="cat-stats card">
+			<div class="cat-stats__heat">
+				<p class="cat-stats__label"><Icon name="flame" size={13} /> 这个分类的写作节奏</p>
+				<Heatmap data={heat} />
+			</div>
+			<div class="cat-stats__tags">
+				<p class="cat-stats__label"><Icon name="tag" size={13} /> 常用标签</p>
+				<div class="tag-cloud">
+					{tags.slice(0, 14).map((t) => (
+						<a class="chip" href={`/tags/${encodeURIComponent(t.name)}/`}>#{t.name} <em>{t.count}</em></a>
+					))}
+				</div>
+			</div>
+		</div>
+
+		<div class="card-grid">
+			{posts.map((post, i) => (
+				<PostCard post={post} index={i} />
+			))}
+		</div>
+
+		<div class="back-row">
+			<a class="section-link" href="/categories/"><Icon name="arrowLeft" size={13} /> 全部分类</a>
+			<a class="section-link" href="/tags/"><Icon name="tag" size={13} /> 按标签浏览</a>
+		</div>
+	</div>
+</BaseLayout>
+
+<style>
+	.cat-stats {
+		display: grid;
+		gap: 1.2rem;
+		padding: 1.2rem 1.3rem 1.4rem;
+		margin-bottom: 1.6rem;
+	}
+	.cat-stats__label {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.8rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--c-text-mute);
+		letter-spacing: 0.02em;
+	}
+	.tag-cloud {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.tag-cloud em {
+		font-style: normal;
+		font-size: 0.68rem;
+		opacity: 0.6;
+	}
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.back-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1.2rem;
+		margin-top: 2.4rem;
+	}
+	@media (min-width: 640px) {
+		.card-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1000px) {
+		.card-grid { grid-template-columns: repeat(3, 1fr); }
+		.cat-stats { grid-template-columns: 1.4fr 1fr; }
+	}
+</style>

@@ -1,0 +1,132 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getPostMetas, archiveOf } from '@/lib/blog';
+import { formatDate } from '@/lib/utils';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+	const posts = await getPostMetas();
+	return archiveOf(posts).map((group) => ({
+		params: { year: String(group.year) },
+		props: { year: group.year, posts: group.posts },
+	}));
+}) satisfies GetStaticPaths;
+
+const posts = await getPostMetas();
+const groups = archiveOf(posts);
+const { year, posts: yearPosts } = Astro.props;
+const years = groups.map((g) => g.year);
+const idx = years.indexOf(year);
+const older = years[idx + 1];
+const newer = years[idx - 1];
+---
+<BaseLayout title={`${year} 年归档`} description={`${year} 年写下的 ${yearPosts.length} 篇文章。`}>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="calendar" size={13} /> 年度归档</p>
+		<h1>{year} 年</h1>
+		<p>
+			这一年写了 <b>{yearPosts.length}</b> 篇，
+			<b>{yearPosts.reduce((s, p) => s + p.words, 0).toLocaleString('zh-CN')}</b> 字。
+		</p>
+		<nav class="year-nav">
+			{newer && (
+				<a class="chip" href={`/archive/${newer}/`}>
+					<Icon name="chevronLeft" size={12} /> {newer}
+				</a>
+			)}
+			<a class="chip" href="/archive/"><Icon name="archive" size={12} /> 全部年份</a>
+			{older && (
+				<a class="chip" href={`/archive/${older}/`}>
+					{older} <Icon name="chevronRight" size={12} />
+				</a>
+			)}
+		</nav>
+	</header>
+
+	<div class="wrap">
+		<div class="card-grid">
+			{yearPosts.map((post, i) => (
+				<PostCard post={post} index={i} />
+			))}
+		</div>
+
+		<section class="year-list">
+			<h2 class="section-title">这一年的流水</h2>
+			<ul>
+				{yearPosts.map((post) => (
+					<li>
+						<time datetime={post.published.toISOString()}>{formatDate(post.published, 'short')}</time>
+						<a href={post.url}>{post.title}</a>
+						<span class="year-list__cat">{post.category}</span>
+					</li>
+				))}
+			</ul>
+		</section>
+	</div>
+</BaseLayout>
+
+<style>
+	.year-nav {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1.2rem;
+	}
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.year-list {
+		margin-top: 3rem;
+	}
+	.year-list ul {
+		display: grid;
+		gap: 0.1rem;
+		margin-top: 1rem;
+		list-style: none;
+		padding: 0;
+	}
+	.year-list li {
+		display: grid;
+		grid-template-columns: 4.2rem 1fr auto;
+		gap: 0.7rem;
+		align-items: baseline;
+		padding: 0.5rem 0.6rem;
+		border-radius: 0.6rem;
+		transition: background-color 0.2s var(--ease-soft);
+	}
+	.year-list li:hover {
+		background: var(--c-surface-2);
+	}
+	.year-list time {
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.year-list a {
+		font-size: 0.9rem;
+		color: var(--c-text-soft);
+		text-decoration: none;
+	}
+	.year-list a:hover {
+		color: var(--c-accent-ink);
+	}
+	.year-list__cat {
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+	@media (min-width: 640px) {
+		.card-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1000px) {
+		.card-grid { grid-template-columns: repeat(3, 1fr); }
+	}
+	@media (max-width: 520px) {
+		.year-list li { grid-template-columns: 3.4rem 1fr; }
+		.year-list__cat { display: none; }
+	}
+</style>

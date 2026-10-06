@@ -1,0 +1,114 @@
+---
+import Icon from './Icon.astro';
+
+const options = [
+	{ mode: 'light', icon: 'sun', label: '亮色' },
+	{ mode: 'dark', icon: 'moon', label: '暗色' },
+	{ mode: 'system', icon: 'monitor', label: '跟随系统' },
+] as const;
+---
+<div class="theme-toggle" role="group" aria-label="切换主题">
+	<span class="theme-toggle__pill" aria-hidden="true"></span>
+	{options.map((o) => (
+		<button
+			type="button"
+			class="theme-toggle__btn"
+			data-theme-set={o.mode}
+			title={o.label}
+			aria-label={o.label}
+			aria-pressed="false"
+		>
+			<Icon name={o.icon} size={15} />
+		</button>
+	))}
+</div>
+
+<style>
+	.theme-toggle {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 1px;
+		padding: 2px;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+	}
+	.theme-toggle__pill {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: calc((100% - 4px) / 3);
+		height: calc(100% - 4px);
+		border-radius: 999px;
+		background: var(--c-accent-soft);
+		box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c-accent) 35%, transparent);
+		transition: transform 0.32s var(--ease-spring);
+		transform: translateX(var(--pill-x, 0));
+	}
+	.theme-toggle__btn {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		width: 1.65rem;
+		height: 1.65rem;
+		border-radius: 999px;
+		color: var(--c-text-mute);
+		background: transparent;
+		border: 0;
+		cursor: pointer;
+		transition: color 0.2s var(--ease-soft);
+	}
+	.theme-toggle__btn:hover {
+		color: var(--c-text);
+	}
+	.theme-toggle__btn[aria-pressed='true'] {
+		color: var(--c-accent-ink);
+	}
+</style>
+
+<script>
+	const KEY = 'ash-theme';
+	const root = document.documentElement;
+	const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-theme-set]'));
+
+	function apply(mode: string) {
+		const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+		root.dataset.theme = dark ? 'dark' : 'light';
+		root.dataset.themeMode = mode;
+		buttons.forEach((btn, i) => {
+			const active = btn.dataset.themeSet === mode;
+			btn.setAttribute('aria-pressed', String(active));
+			if (active) root.style.setProperty('--pill-x', `${i * 100}%`);
+		});
+	}
+
+	function sync() {
+		let mode = 'system';
+		try {
+			mode = localStorage.getItem(KEY) || 'system';
+		} catch {}
+		apply(mode);
+	}
+
+	buttons.forEach((btn) => {
+		btn.addEventListener('click', () => {
+			const mode = btn.dataset.themeSet || 'system';
+			try {
+				localStorage.setItem(KEY, mode);
+			} catch {}
+			apply(mode);
+			document.dispatchEvent(new CustomEvent('ash:theme', { detail: mode }));
+		});
+	});
+
+	matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+		try {
+			if ((localStorage.getItem(KEY) || 'system') === 'system') apply('system');
+		} catch {}
+	});
+
+	sync();
+	document.addEventListener('astro:after-swap', sync);
+</script>

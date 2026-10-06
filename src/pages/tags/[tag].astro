@@ -1,0 +1,142 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getPostMetas, postsByTag, postsByCategory, tagsOf } from '@/lib/blog';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+	const posts = await getPostMetas();
+	const byTag = postsByTag(posts);
+	const related = postsByCategory(posts);
+	return [...byTag.entries()].map(([tag, tagPosts]) => {
+		// 同分类里的其他文章，作为「标签邻近」
+		const near = new Map<string, number>();
+		for (const p of tagPosts) {
+			for (const sib of related.get(p.category) ?? []) {
+				if (sib.slug === p.slug) continue;
+				near.set(sib.slug, (near.get(sib.slug) ?? 0) + 1);
+			}
+		}
+		const suggestions = [...near.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 4)
+			.map(([slug]) => posts.find((p) => p.slug === slug)!)
+			.filter(Boolean);
+		return { params: { tag }, props: { tag, posts: tagPosts, suggestions } };
+	});
+}) satisfies GetStaticPaths;
+
+const { tag, posts, suggestions } = Astro.props;
+const allTags = tagsOf(await getPostMetas());
+const coOccur = new Map<string, number>();
+for (const p of posts) {
+	for (const t of p.tags) {
+		if (t !== tag) coOccur.set(t, (coOccur.get(t) ?? 0) + 1);
+	}
+}
+const relatedTags = [...coOccur.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+const words = posts.reduce((s, p) => s + p.words, 0);
+---
+<BaseLayout
+	title={`#${tag}`}
+	description={`标签「${tag}」下的 ${posts.length} 篇文章。`}
+	tags={[tag]}
+>
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="tag" size={13} /> 标签</p>
+		<h1>#{tag}</h1>
+		<p>
+			这个标签下有 <b>{posts.length}</b> 篇文章，合计 <b>{words.toLocaleString('zh-CN')}</b> 字。
+		</p>
+		{relatedTags.length > 0 && (
+			<div class="rel-tags">
+				<span class="rel-tags__label">相关标签</span>
+				{relatedTags.map(([name, count]) => (
+					<a class="chip" href={`/tags/${encodeURIComponent(name)}/`}>#{name} <em>{count}</em></a>
+				))}
+			</div>
+		)}
+		<a class="section-link back" href="/tags/"><Icon name="arrowLeft" size={13} /> 全部标签</a>
+	</header>
+
+	<div class="wrap">
+		<div class="card-grid">
+			{posts.map((post, i) => (
+				<PostCard post={post} index={i} />
+			))}
+		</div>
+
+		{suggestions.length > 0 && (
+			<section class="suggest">
+				<h2 class="section-title">顺带一提</h2>
+				<p class="section-sub">同一个分类里你可能也感兴趣</p>
+				<div class="card-grid suggest-grid">
+					{suggestions.map((post, i) => (
+						<PostCard post={post} variant="compact" index={i} />
+					))}
+				</div>
+			</section>
+		)}
+
+		<section class="all-tags">
+			<h2 class="section-title">全站标签</h2>
+			<div class="tag-cloud">
+				{allTags.map((t) => (
+					<a class:list={['chip', { 'chip-active': t.name === tag }]} href={`/tags/${encodeURIComponent(t.name)}/`}>
+						#{t.name} <em>{t.count}</em>
+					</a>
+				))}
+			</div>
+		</section>
+	</div>
+</BaseLayout>
+
+<style>
+	.rel-tags {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 1.1rem;
+	}
+	.rel-tags__label {
+		font-size: 0.74rem;
+		color: var(--c-text-mute);
+	}
+	.rel-tags em,
+	.tag-cloud em {
+		font-style: normal;
+		font-size: 0.68rem;
+		opacity: 0.6;
+	}
+	.back {
+		margin-top: 1.2rem;
+	}
+	.card-grid {
+		display: grid;
+		gap: 1rem;
+	}
+	.suggest,
+	.all-tags {
+		margin-top: 3rem;
+	}
+	.suggest-grid {
+		margin-top: 1rem;
+	}
+	.tag-cloud {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1rem;
+	}
+	@media (min-width: 640px) {
+		.card-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1000px) {
+		.card-grid { grid-template-columns: repeat(3, 1fr); }
+		.suggest-grid { grid-template-columns: repeat(4, 1fr); }
+	}
+</style>

@@ -1,0 +1,119 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import Mascot from '@/components/Mascot.astro';
+import { getPostMetas } from '@/lib/blog';
+
+const posts = await getPostMetas();
+const picks = posts.slice(0, 3);
+---
+<BaseLayout title="页面走丢了" description="404 —— 这页大概被猫叼走了。" noindex>
+	<div class="wrap notfound">
+		<div class="notfound__art">
+			<Mascot size={260} />
+		</div>
+		<div class="notfound__text">
+			<p class="notfound__code">404</p>
+			<h1>这页被猫叼走了</h1>
+			<p class="notfound__desc">
+				你要找的地址不存在，或者已经被我删掉了。要不试试下面这几条路？
+			</p>
+			<div class="notfound__actions">
+				<a class="btn btn-accent" href="/"><Icon name="home" size={15} /> 回首页</a>
+				<a class="btn" href="/blog/"><Icon name="book" size={15} /> 看文章</a>
+				<button class="btn" type="button" data-open-palette><Icon name="search" size={15} /> 搜一下</button>
+			</div>
+			{picks.length > 0 && (
+				<div class="notfound__picks">
+					<p class="notfound__picks-title">或者从这几篇开始</p>
+					<ul>
+						{picks.map((post) => (
+							<li>
+								<a href={post.url}>
+									{post.title}
+									<Icon name="arrowRight" size={12} />
+								</a>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
+	</div>
+</BaseLayout>
+
+<style>
+	.notfound {
+		display: grid;
+		gap: 2rem;
+		align-items: center;
+		padding-block: 4rem 3rem;
+		min-height: 60vh;
+	}
+	.notfound__art {
+		display: grid;
+		place-items: center;
+	}
+	.notfound__code {
+		font-family: var(--font-mono);
+		font-size: 0.9rem;
+		letter-spacing: 0.3em;
+		color: var(--c-accent-ink);
+	}
+	.notfound h1 {
+		margin-top: 0.6rem;
+		font-family: var(--font-display);
+		font-size: clamp(1.8rem, 1.5rem + 2vw, 2.75rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+	}
+	.notfound__desc {
+		margin-top: 0.9rem;
+		max-width: 32rem;
+		font-size: 0.96rem;
+		line-height: 1.85;
+		color: var(--c-text-mute);
+	}
+	.notfound__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: 1.6rem;
+	}
+	.notfound__picks {
+		margin-top: 2rem;
+		padding-top: 1.4rem;
+		border-top: 1px dashed var(--c-border);
+	}
+	.notfound__picks-title {
+		font-size: 0.76rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--c-text-mute);
+	}
+	.notfound__picks ul {
+		display: grid;
+		gap: 0.5rem;
+		margin-top: 0.8rem;
+		list-style: none;
+		padding: 0;
+	}
+	.notfound__picks a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.9rem;
+		color: var(--c-text-soft);
+		text-decoration: none;
+	}
+	.notfound__picks a:hover {
+		color: var(--c-accent-ink);
+		gap: 0.6rem;
+	}
+	@media (min-width: 820px) {
+		.notfound {
+			grid-template-columns: 0.8fr 1.2fr;
+			gap: 3rem;
+		}
+	}
+</style>

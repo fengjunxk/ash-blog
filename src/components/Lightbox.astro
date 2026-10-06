@@ -1,0 +1,158 @@
+---
+/** 点击正文图片查看大图（原生 dialog，无依赖，支持键盘翻页） */
+---
+<div class="lightbox" id="lightbox" hidden data-pagefind-ignore>
+	<div class="lightbox__backdrop" data-lb-close></div>
+	<button type="button" class="lightbox__nav lightbox__nav--prev" data-lb-prev aria-label="上一张">
+		‹
+	</button>
+	<figure class="lightbox__figure">
+		<img id="lightbox-img" alt="" />
+		<figcaption id="lightbox-caption"></figcaption>
+	</figure>
+	<button type="button" class="lightbox__nav lightbox__nav--next" data-lb-next aria-label="下一张">
+		›
+	</button>
+	<button type="button" class="lightbox__close" data-lb-close aria-label="关闭">✕</button>
+</div>
+
+<style>
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 95;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 2.5rem 1rem;
+	}
+	.lightbox__backdrop {
+		position: absolute;
+		inset: 0;
+		background: color-mix(in oklab, var(--c-ink) 72%, transparent);
+		backdrop-filter: blur(8px);
+	}
+	.lightbox__figure {
+		position: relative;
+		grid-column: 2;
+		display: grid;
+		justify-items: center;
+		gap: 0.7rem;
+		max-height: 100%;
+		animation: lb-in 0.3s var(--ease-spring);
+	}
+	@keyframes lb-in {
+		from { opacity: 0; transform: scale(0.96); }
+	}
+	.lightbox__figure img {
+		max-width: min(92vw, 80rem);
+		max-height: 82vh;
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-lift);
+		background: var(--c-surface);
+	}
+	.lightbox__figure figcaption {
+		font-size: 0.82rem;
+		color: color-mix(in oklab, var(--c-bg) 82%, transparent);
+		text-align: center;
+	}
+	.lightbox__nav,
+	.lightbox__close {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 2.6rem;
+		height: 2.6rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in oklab, var(--c-bg) 28%, transparent);
+		background: color-mix(in oklab, var(--c-ink) 45%, transparent);
+		color: var(--c-bg);
+		font-size: 1.4rem;
+		line-height: 1;
+		cursor: pointer;
+		transition: all 0.22s var(--ease-soft);
+	}
+	.lightbox__nav:hover,
+	.lightbox__close:hover {
+		background: var(--c-accent);
+		border-color: transparent;
+		color: #fff;
+	}
+	.lightbox__close {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		font-size: 1rem;
+	}
+	.lightbox__nav[disabled] {
+		opacity: 0.25;
+		cursor: default;
+	}
+</style>
+
+<script>
+	const box = document.getElementById('lightbox');
+	const img = document.getElementById('lightbox-img') as HTMLImageElement | null;
+	const caption = document.getElementById('lightbox-caption');
+	const prevBtn = document.querySelector<HTMLButtonElement>('[data-lb-prev]');
+	const nextBtn = document.querySelector<HTMLButtonElement>('[data-lb-next]');
+	let items: HTMLImageElement[] = [];
+	let index = 0;
+
+	function collect() {
+		items = Array.from(document.querySelectorAll<HTMLImageElement>('.prose-ash img'));
+	}
+
+	function show(i: number) {
+		if (!items.length || !img) return;
+		index = (i + items.length) % items.length;
+		const source = items[index]!;
+		img.src = source.currentSrc || source.src;
+		img.alt = source.alt ?? '';
+		if (caption) caption.textContent = source.alt ?? '';
+		prevBtn?.toggleAttribute('disabled', items.length < 2);
+		nextBtn?.toggleAttribute('disabled', items.length < 2);
+	}
+
+	function open(i: number) {
+		collect();
+		if (!items.length) return;
+		box?.removeAttribute('hidden');
+		document.documentElement.style.overflow = 'hidden';
+		show(i);
+	}
+
+	function close() {
+		box?.setAttribute('hidden', '');
+		document.documentElement.style.overflow = '';
+	}
+
+	document.addEventListener('click', (e) => {
+		const target = e.target as HTMLElement;
+		if (target.closest('[data-lb-close]')) {
+			close();
+			return;
+		}
+		if (target.closest('[data-lb-prev]')) {
+			show(index - 1);
+			return;
+		}
+		if (target.closest('[data-lb-next]')) {
+			show(index + 1);
+			return;
+		}
+		const image = target.closest<HTMLImageElement>('.prose-ash img');
+		if (image) {
+			collect();
+			open(items.indexOf(image));
+		}
+	});
+
+	document.addEventListener('keydown', (e) => {
+		if (box?.hasAttribute('hidden') !== false) return;
+		if (e.key === 'Escape') close();
+		if (e.key === 'ArrowLeft') show(index - 1);
+		if (e.key === 'ArrowRight') show(index + 1);
+	});
+</script>

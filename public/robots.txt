@@ -1,0 +1,18 @@
+# 灰羽 · Ash —— 允许抓取
+User-agent: *
+Allow: /
+Disallow: /guestbook/
+Disallow: /api/
+
+# 搜索引擎
+Sitemap: https://ash-blog.pages.dev/sitemap-index.xml
+# AI 摘要（llms.txt 约定）
+# LLMs: https://ash-blog.pages.dev/llms.txt
+
+# 一些烦人的爬虫请绕道
+User-agent: SemrushBot
+Disallow: /
+User-agent: AhrefsBot
+Disallow: /
+User-agent: MJ12bot
+Disallow: /

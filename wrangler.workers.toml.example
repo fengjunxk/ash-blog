@@ -1,0 +1,34 @@
+# SSR（Workers）模式配置示例
+#
+# 用法：
+#   pnpm build:ssr
+#   cp wrangler.workers.toml.example wrangler.toml    # Windows: Copy-Item
+#   wrangler deploy
+#
+# 说明：Pages 项目与 Workers 不能共用同一份 wrangler 配置 ——
+# Pages 那份带 pages_build_output_dir，而 Workers 需要 main + assets。
+# 所以切换形态时替换 wrangler.toml 即可（本文件是给 `pnpm build:ssr` 用的）。
+
+name = "ash-blog"
+main = "./dist/server/entry.mjs"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_als"]
+
+# 构建产物目录由脚本传入；这里声明静态资源绑定
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+
+[build]
+command = "pnpm build:ssr"
+
+[vars]
+NODE_VERSION = "22"
+
+# 浏览量 / 点赞：先 `wrangler kv namespace create BLOG_KV` 再把 id 填进来
+[[kv_namespaces]]
+binding = "BLOG_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[observability]
+enabled = true

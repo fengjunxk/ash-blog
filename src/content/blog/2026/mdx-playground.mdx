@@ -1,0 +1,114 @@
+---
+title: 用 MDX 写文章：在 Markdown 里塞进组件
+description: 演示这个博客的 MDX 能力：KaTeX 公式、任务列表、脚注、表格、代码高亮、以及怎么在正文里插入自定义组件。
+published: 2026-08-24
+category: 工程
+tags: [MDX, Astro, 数学, 写作]
+series: 边缘上的博客
+---
+
+Markdown 写久了会碰到天花板：想插一个对比卡片、一个可交互的 demo，就只能写裸 HTML。MDX 解决的正是这件事 —— **它是 Markdown 的超集，可以随时变成组件**。
+
+## 数学公式
+
+行内公式用两个美元符号，比如缓存命中率的定义 $h = \frac{N_{hit}}{N_{total}}$，或者时间复杂度 $O(n \log n)$。
+
+块级公式单独一段：
+
+$$
+T_{p99} = \mu + z_{0.99} \cdot \sigma \approx \mu + 2.326\,\sigma
+$$
+
+Latency 的分布通常不是正态的，所以更常用的是分位数：
+
+$$
+P(X \le x_p) = p, \quad p \in \{0.5, 0.9, 0.99\}
+$$
+
+> [!TIP] 什么时候别用公式
+> 如果一段文字需要三个以上公式才能说清，那大概率更适合画一张图。
+> 公式适合精确表达，不适合解释直觉。
+
+## 任务列表
+
+- [x] 支持 GFM 表格与任务列表
+- [x] 代码高亮（亮/暗双主题）
+- [x] KaTeX 数学公式
+- [x] Callout 提示块
+- [ ] 图表（mermaid）渲染
+- [ ] 交互式代码演示
+
+## 表格与对齐
+
+| 指标 | p50 | p95 | p99 | 说明 |
+| --- | ---: | ---: | ---: | :--- |
+| 边缘函数冷启动 | 0 ms | 0 ms | 1 ms | Workers 无冷启动 |
+| KV 读取 | 3 ms | 8 ms | 22 ms | 同区域 |
+| KV 读取（跨区） | 40 ms | 90 ms | 180 ms | 缓存未命中 |
+| 静态资源命中 CDN | 12 ms | 35 ms | 80 ms | 视网络而定 |
+
+## 脚注
+
+Pages Functions 的计费单位是请求数[^1]，KV 的计费单位是读写次数[^2]。对一个个人博客来说，这两个数字都很难碰到天花板。
+
+[^1]: 免费额度是每天 100,000 次请求，超过后按每百万次 $0.30 计费。
+[^2]: KV 免费额度是每天 100,000 次读、1,000 次写。写操作额度小得多，但浏览量场景下完全够用。
+
+## 引用与嵌套
+
+> 好的设计是尽可能少的设计。
+>
+> —— Dieter Rams
+>
+> > 嵌套引用也支持，但**不建议**用超过两层。读者会在第三层迷路。
+
+## 行内标记
+
+可以用 `行内代码`、**加粗**、*斜体*、~~删除线~~、[链接](/blog/)，以及键盘按键 <kbd>⌘</kbd> + <kbd>K</kbd> 这种写法（这里用了裸 HTML，MDX 完全允许）。
+
+## 长代码块
+
+```ts title="src/pages/blog/[...slug].astro"
+---
+export const getStaticPaths = (async () => {
+	const posts = await getPosts();
+	return posts.map((post) => ({
+		params: { slug: postSlug(post) },
+		props: { post, all: posts.map(toMeta) },
+	}));
+}) satisfies GetStaticPaths;
+
+const { post, all } = Astro.props;
+const meta = toMeta(post);
+const { Content } = await render(post);
+---
+```
+
+```diff
+- const posts = await getCollection('blog');
++ const posts = await getCollection('blog', ({ data }) => !data.draft);
+```
+
+## 在正文里放组件（MDX 专属）
+
+这是 MDX 最有价值的部分。`.mdx` 文件里可以直接 import 并渲染 Astro 组件：
+
+```mdx
+import Callout from '@/components/Callout.astro';
+
+<Callout kind="tip" title="注意">
+  这里是一个真正的组件，不是 Markdown 语法糖。
+</Callout>
+```
+
+因为组件在**构建期渲染**，所以产物依然是纯 HTML —— 零客户端 JS。
+
+## 小结
+
+写作体验的优先级其实很朴素：
+
+1. 打开文件就能写，不需要心理建设
+2. 需要什么能力，当场就能用上（而不是「等我有空重构博客再加」）
+3. 写完 `git push`，剩下的交给 CI
+
+MDX 加上 Astro 的构建期渲染，刚好满足这三条。

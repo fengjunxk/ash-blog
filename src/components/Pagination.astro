@@ -1,0 +1,113 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+	current: number;
+	total: number;
+	base: string;
+	label?: string;
+}
+const { current, total, base, label = '文章' } = Astro.props;
+const url = (p: number) => (p <= 1 ? `${base}/` : `${base}/page/${p}/`);
+const windowSize = 2;
+const pages: (number | '…')[] = [];
+for (let p = 1; p <= total; p++) {
+	if (p === 1 || p === total || Math.abs(p - current) <= windowSize) pages.push(p);
+	else if (pages[pages.length - 1] !== '…') pages.push('…');
+}
+---
+{total > 1 && (
+	<nav class="pager" aria-label={`${label}分页`}>
+		<a
+			class:list={['pager__btn', { 'is-disabled': current <= 1 }]}
+			href={current > 1 ? url(current - 1) : undefined}
+			aria-disabled={current <= 1}
+			rel="prev"
+		>
+			<Icon name="chevronLeft" size={15} /> 上一页
+		</a>
+
+		<ul class="pager__list">
+			{pages.map((p) => (
+				<li>
+					{p === '…' ? (
+						<span class="pager__gap">…</span>
+					) : (
+						<a
+							href={url(p)}
+							class:list={['pager__num', { 'is-active': p === current }]}
+							aria-current={p === current ? 'page' : undefined}
+						>
+							{p}
+						</a>
+					)}
+				</li>
+			))}
+		</ul>
+
+		<a
+			class:list={['pager__btn', { 'is-disabled': current >= total }]}
+			href={current < total ? url(current + 1) : undefined}
+			aria-disabled={current >= total}
+			rel="next"
+		>
+			下一页 <Icon name="chevronRight" size={15} />
+		</a>
+	</nav>
+)}
+
+<style>
+	.pager {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+		margin-top: 2.6rem;
+	}
+	.pager__list {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.pager__btn,
+	.pager__num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.25rem;
+		min-width: 2.15rem;
+		height: 2.15rem;
+		padding-inline: 0.6rem;
+		border-radius: 999px;
+		border: 1px solid var(--c-border);
+		background: var(--c-surface);
+		color: var(--c-text-soft);
+		font-size: 0.82rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: all 0.22s var(--ease-soft);
+	}
+	.pager__btn:hover,
+	.pager__num:hover {
+		color: var(--c-text);
+		border-color: var(--c-border-strong);
+		transform: translateY(-1px);
+	}
+	.pager__num.is-active {
+		background: var(--c-accent);
+		border-color: transparent;
+		color: #fff;
+	}
+	.pager__btn.is-disabled {
+		pointer-events: none;
+		opacity: 0.4;
+	}
+	.pager__gap {
+		color: var(--c-text-mute);
+		padding-inline: 0.2rem;
+	}
+</style>

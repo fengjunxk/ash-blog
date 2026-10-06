@@ -1,0 +1,22 @@
+# Cloudflare Pages 配置（配合 `wrangler pages deploy dist` 或 Dashboard 部署）
+name = "ash-blog"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+# 构建环境变量（Dashboard 部署时也可以在那里设置）
+[vars]
+NODE_VERSION = "22"
+
+# 浏览量 / 点赞用的 KV 命名空间。
+# 先执行：pnpm cf:kv:create
+# 然后把输出的 id 填到下面（Dashboard 部署则改在 Settings → Functions 里绑定）
+[[kv_namespaces]]
+binding = "BLOG_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# 需要 SSR（`pnpm build:ssr` 产出 Worker 形态）时改用它：
+# [build]
+# command = "pnpm build:ssr"
+#
+# [observability]
+# enabled = true

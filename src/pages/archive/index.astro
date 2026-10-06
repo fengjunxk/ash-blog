@@ -1,0 +1,188 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/Icon.astro';
+import { getPostMetas, archiveOf, siteStats } from '@/lib/blog';
+import { formatDate, formatNumber } from '@/lib/utils';
+
+const posts = await getPostMetas();
+const groups = archiveOf(posts);
+const stats = siteStats(posts);
+const busiest = [...groups].sort((a, b) => b.posts.length - a.posts.length)[0];
+---
+<BaseLayout title="归档" description="按年份浏览灰羽写过的全部文章。">
+	<header class="page-hero wrap">
+		<p class="page-hero__eyebrow"><Icon name="archive" size={13} /> 时间线</p>
+		<h1>从最早到现在</h1>
+		<p>
+			{groups.length} 个年份，{stats.count} 篇文章，{formatNumber(stats.words)} 字。
+			{busiest && <>写得最勤的是 <b>{busiest.year}</b> 年（{busiest.posts.length} 篇）。</>}
+		</p>
+		<nav class="year-jump">
+			{groups.map((g) => (
+				<a class="chip" href={`#y${g.year}`}>{g.year}</a>
+			))}
+		</nav>
+	</header>
+
+	<div class="wrap timeline-wrap">
+		{groups.map((group) => (
+			<section class="year-block" id={`y${group.year}`} data-reveal>
+				<header class="year-block__head">
+					<h2>{group.year}</h2>
+					<span class="year-block__line" aria-hidden="true"></span>
+					<span class="year-block__count">
+						{group.posts.length} 篇 · {formatNumber(group.posts.reduce((s, p) => s + p.words, 0))} 字
+					</span>
+					<a class="year-block__more" href={`/archive/${group.year}/`}>
+						年度页 <Icon name="arrowRight" size={12} />
+					</a>
+				</header>
+				<ol class="tl">
+					{group.posts.map((post) => (
+						<li class="tl__item">
+							<span class="tl__dot" aria-hidden="true"></span>
+							<time class="tl__date" datetime={post.published.toISOString()}>
+								{formatDate(post.published, 'short')}
+							</time>
+							<a class="tl__link" href={post.url}>{post.title}</a>
+							<span class="tl__meta">
+								<span class="tl__cat">{post.category}</span>
+								<span class="tl__min">{post.minutes} 分钟</span>
+							</span>
+						</li>
+					))}
+				</ol>
+			</section>
+		))}
+	</div>
+</BaseLayout>
+
+<style>
+	.year-jump {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 1.2rem;
+	}
+	.timeline-wrap {
+		padding-bottom: 2rem;
+		max-width: 56rem;
+	}
+	.year-block {
+		padding-block: 1.6rem;
+	}
+	.year-block__head {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		margin-bottom: 1.1rem;
+	}
+	.year-block__head h2 {
+		font-family: var(--font-display);
+		font-size: 1.6rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		font-variant-numeric: tabular-nums;
+	}
+	.year-block__line {
+		flex: 1;
+		height: 1px;
+		background: linear-gradient(90deg, var(--c-border-strong), transparent);
+	}
+	.year-block__count {
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+		white-space: nowrap;
+	}
+	.year-block__more {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		font-size: 0.76rem;
+		font-weight: 600;
+		color: var(--c-accent-ink);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.tl {
+		position: relative;
+		display: grid;
+		gap: 0.1rem;
+		list-style: none;
+		padding: 0 0 0 1.3rem;
+		margin: 0;
+	}
+	.tl::before {
+		content: '';
+		position: absolute;
+		left: 0.32rem;
+		top: 0.4rem;
+		bottom: 0.4rem;
+		width: 1px;
+		background: var(--c-border);
+	}
+	.tl__item {
+		position: relative;
+		display: grid;
+		grid-template-columns: 3.6rem 1fr auto;
+		gap: 0.7rem;
+		align-items: baseline;
+		padding: 0.5rem 0.6rem;
+		border-radius: 0.65rem;
+		transition: background-color 0.22s var(--ease-soft);
+	}
+	.tl__item:hover {
+		background: var(--c-surface);
+	}
+	.tl__dot {
+		position: absolute;
+		left: -1.03rem;
+		top: 0.85rem;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 999px;
+		background: var(--c-surface);
+		border: 2px solid var(--c-border-strong);
+		transition: all 0.22s var(--ease-soft);
+	}
+	.tl__item:hover .tl__dot {
+		border-color: var(--c-accent);
+		background: var(--c-accent);
+		transform: scale(1.15);
+	}
+	.tl__date {
+		font-size: 0.76rem;
+		color: var(--c-text-mute);
+		font-variant-numeric: tabular-nums;
+	}
+	.tl__link {
+		font-size: 0.94rem;
+		font-weight: 500;
+		color: var(--c-text-soft);
+		text-decoration: none;
+		line-height: 1.5;
+	}
+	.tl__link:hover {
+		color: var(--c-accent-ink);
+	}
+	.tl__meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+		white-space: nowrap;
+	}
+	.tl__cat {
+		padding: 0.1rem 0.45rem;
+		border-radius: 999px;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+	}
+	@media (max-width: 620px) {
+		.tl__item {
+			grid-template-columns: 3.2rem 1fr;
+		}
+		.tl__meta { display: none; }
+	}
+</style>

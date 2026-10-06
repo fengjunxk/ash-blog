@@ -1,0 +1,533 @@
+---
+import Icon from './Icon.astro';
+import { NAV, SOCIALS } from '@/data/site';
+
+const quick = [
+	{ label: '亮色主题', hint: '切换外观', icon: 'sun', action: 'theme:light' },
+	{ label: '暗色主题', hint: '切换外观', icon: 'moon', action: 'theme:dark' },
+	{ label: '跟随系统', hint: '切换外观', icon: 'monitor', action: 'theme:system' },
+	{ label: '复制当前链接', hint: '分享这一页', icon: 'link', action: 'copy:url' },
+	{ label: 'RSS 订阅', hint: '/rss.xml', icon: 'rss', href: '/rss.xml' },
+];
+---
+<div class="palette" id="palette" hidden data-pagefind-ignore>
+	<div class="palette__backdrop" data-close-palette></div>
+	<div class="palette__panel card" role="dialog" aria-modal="true" aria-label="命令面板">
+		<div class="palette__search">
+			<Icon name="search" size={17} class="palette__search-icon" />
+			<input
+				id="palette-input"
+				type="text"
+				class="palette__input"
+				placeholder="搜索文章、页面或输入命令…"
+				autocomplete="off"
+				spellcheck="false"
+				aria-controls="palette-list"
+				aria-expanded="true"
+			/>
+			<button type="button" class="palette__esc" data-close-palette aria-label="关闭">ESC</button>
+		</div>
+		<div class="palette__body">
+			<div class="palette__group" id="palette-results-group">
+				<p class="palette__group-title">文章</p>
+				<ul class="palette__list" id="palette-list" role="listbox"></ul>
+				<p class="palette__empty" id="palette-empty" hidden>什么都没找到，换个关键词试试？</p>
+				<p class="palette__hint-loading" id="palette-loading">正在准备索引…</p>
+			</div>
+			<div class="palette__group" id="palette-quick-group">
+				<p class="palette__group-title">快捷操作</p>
+				<ul class="palette__list" id="palette-quick" role="listbox">
+					{NAV.slice(0, 6).map((item) => (
+						<li class="palette__item" role="option" data-href={item.href} tabindex="-1">
+							<span class="palette__icon"><Icon name={item.icon ?? 'link'} size={15} /></span>
+							<span class="palette__text">
+								<strong>前往「{item.label}」</strong>
+								<em>{item.desc}</em>
+							</span>
+							<Icon name="arrowRight" size={14} class="palette__go" />
+						</li>
+					))}
+					{quick.map((q) => (
+						<li
+							class="palette__item"
+							role="option"
+							data-action={q.action}
+							data-href={q.href}
+							tabindex="-1"
+						>
+							<span class="palette__icon"><Icon name={q.icon} size={15} /></span>
+							<span class="palette__text">
+								<strong>{q.label}</strong>
+								<em>{q.hint}</em>
+							</span>
+						</li>
+					))}
+				</ul>
+			</div>
+		</div>
+		<div class="palette__foot">
+			<span><span class="kbd">↑</span><span class="kbd">↓</span> 选择</span>
+			<span><span class="kbd">↵</span> 打开</span>
+			<span><span class="kbd">esc</span> 关闭</span>
+			<span class="palette__foot-brand">灰羽 · Ash</span>
+		</div>
+	</div>
+</div>
+
+<style>
+	.palette {
+		position: fixed;
+		inset: 0;
+		z-index: 90;
+		display: flex;
+		align-items: flex-start;
+		justify-content: center;
+		padding: clamp(0.5rem, 8vh, 7rem) 1rem 1rem;
+	}
+	.palette__backdrop {
+		position: absolute;
+		inset: 0;
+		background: color-mix(in oklab, var(--c-ink) 42%, transparent);
+		backdrop-filter: blur(6px);
+		animation: palette-fade 0.24s var(--ease-soft);
+	}
+	@keyframes palette-fade {
+		from { opacity: 0; }
+	}
+	.palette__panel {
+		position: relative;
+		width: min(38rem, 100%);
+		max-height: min(70vh, 34rem);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lift);
+		animation: palette-in 0.28s var(--ease-spring);
+	}
+	@keyframes palette-in {
+		from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+	}
+	.palette__search {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		padding: 0.85rem 0.9rem;
+		border-bottom: 1px solid var(--c-border);
+	}
+	.palette__search-icon {
+		color: var(--c-text-mute);
+		flex: none;
+	}
+	.palette__input {
+		flex: 1;
+		border: 0;
+		outline: 0;
+		background: transparent;
+		color: var(--c-text);
+		font-size: 0.98rem;
+		font-family: inherit;
+	}
+	.palette__input::placeholder {
+		color: var(--c-text-mute);
+	}
+	.palette__esc {
+		border: 1px solid var(--c-border-strong);
+		border-bottom-width: 2px;
+		border-radius: 0.45rem;
+		background: var(--c-surface-2);
+		color: var(--c-text-mute);
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
+		padding: 0.15rem 0.35rem;
+		cursor: pointer;
+	}
+	.palette__body {
+		overflow-y: auto;
+		padding: 0.6rem 0.5rem 0.8rem;
+	}
+	.palette__group + .palette__group {
+		margin-top: 0.5rem;
+	}
+	.palette__group-title {
+		padding: 0.4rem 0.6rem 0.3rem;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--c-text-mute);
+	}
+	.palette__list {
+		display: grid;
+		gap: 0.1rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.palette__item {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.55rem 0.6rem;
+		border-radius: 0.7rem;
+		cursor: pointer;
+		color: var(--c-text-soft);
+	}
+	.palette__item.is-active {
+		background: var(--c-accent-soft);
+		color: var(--c-accent-ink);
+	}
+	.palette__icon {
+		display: grid;
+		place-items: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		flex: none;
+		border-radius: 0.55rem;
+		background: var(--c-surface-2);
+		border: 1px solid var(--c-border);
+	}
+	.palette__item.is-active .palette__icon {
+		background: var(--c-surface);
+		border-color: color-mix(in oklab, var(--c-accent) 40%, transparent);
+	}
+	.palette__text {
+		display: grid;
+		min-width: 0;
+	}
+	.palette__text strong {
+		font-size: 0.88rem;
+		font-weight: 600;
+		color: inherit;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.palette__text em {
+		font-style: normal;
+		font-size: 0.74rem;
+		color: var(--c-text-mute);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.palette__go {
+		margin-left: auto;
+		opacity: 0;
+	}
+	.palette__item.is-active .palette__go {
+		opacity: 0.7;
+	}
+	.palette__empty,
+	.palette__hint-loading {
+		padding: 0.8rem 0.6rem;
+		font-size: 0.82rem;
+		color: var(--c-text-mute);
+	}
+	.palette__foot {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
+		padding: 0.5rem 0.9rem;
+		border-top: 1px solid var(--c-border);
+		background: color-mix(in oklab, var(--c-surface-2) 60%, transparent);
+		font-size: 0.72rem;
+		color: var(--c-text-mute);
+	}
+	.palette__foot span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.palette__foot-brand {
+		margin-left: auto;
+		font-family: var(--font-display);
+		font-weight: 600;
+		opacity: 0.75;
+	}
+	@media (max-width: 520px) {
+		.palette__foot { display: none; }
+	}
+</style>
+
+<script>
+	type Doc = { title: string; url: string; date: string; category: string; tags: string[]; description: string; keywords: string };
+
+	const palette = document.getElementById('palette');
+	const input = document.getElementById('palette-input') as HTMLInputElement | null;
+	const list = document.getElementById('palette-list');
+	const quickList = document.getElementById('palette-quick');
+	const empty = document.getElementById('palette-empty');
+	const loading = document.getElementById('palette-loading');
+	const resultsGroup = document.getElementById('palette-results-group');
+	const quickGroup = document.getElementById('palette-quick-group');
+
+	let docs: Doc[] | null = null;
+	let loadingDocs = false;
+	let activeIndex = 0;
+	let visible: HTMLElement[] = [];
+
+	async function loadDocs() {
+		if (docs || loadingDocs) return;
+		loadingDocs = true;
+		try {
+			const res = await fetch('/search-index.json');
+			const data = await res.json();
+			docs = (data.docs ?? []) as Doc[];
+		} catch {
+			docs = [];
+		}
+		loadingDocs = false;
+		loading?.setAttribute('hidden', '');
+	}
+
+	function items(): HTMLElement[] {
+		return Array.from(palette?.querySelectorAll<HTMLElement>('.palette__item:not([hidden])') ?? []);
+	}
+
+	function setActive(i: number) {
+		const all = items();
+		if (!all.length) return;
+		activeIndex = (i + all.length) % all.length;
+		all.forEach((el, idx) => el.classList.toggle('is-active', idx === activeIndex));
+		all[activeIndex]?.scrollIntoView({ block: 'nearest' });
+	}
+
+	function reset() {
+		visible = items();
+		activeIndex = 0;
+		visible.forEach((el, i) => el.classList.toggle('is-active', i === 0));
+	}
+
+	function filterQuickGroup() {
+		if (!quickList) return;
+		const q = (input?.value ?? '').trim().toLowerCase();
+		quickList.querySelectorAll<HTMLElement>('.palette__item').forEach((el) => {
+			el.toggleAttribute('hidden', Boolean(q));
+		});
+		quickGroup?.toggleAttribute('hidden', Boolean(q));
+	}
+
+	function tokenize(text: string) {
+		const lower = text.toLowerCase();
+		const tokens: string[] = [];
+		(lower.match(/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]+/g) ?? []).forEach((run) => {
+			if (run.length === 1) tokens.push(run);
+			for (let i = 0; i < run.length - 1; i++) tokens.push(run.slice(i, i + 2));
+		});
+		(lower.replace(/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/g, ' ').match(/[a-z0-9][a-z0-9'’\-_.+#]*/g) ?? []).forEach((t) => tokens.push(t));
+		return tokens;
+	}
+
+	function localSearch(query: string, limit = 10): Doc[] {
+		if (!docs) return [];
+		const q = query.trim().toLowerCase();
+		if (!q) return [];
+		return docs
+			.map((doc) => {
+				const hay = `${doc.title} ${doc.description} ${doc.category} ${doc.tags.join(' ')} ${doc.keywords}`.toLowerCase();
+				let score = 0;
+				if (doc.title.toLowerCase().includes(q)) score += 30;
+				if (doc.tags.some((t) => t.toLowerCase().includes(q))) score += 14;
+				if (doc.category.toLowerCase().includes(q)) score += 8;
+				for (const token of tokenize(q)) {
+					if (!token) continue;
+					let hits = 0;
+					let idx = hay.indexOf(token);
+					while (idx !== -1 && hits < 12) {
+						hits++;
+						idx = hay.indexOf(token, idx + token.length);
+					}
+					score += hits * (/[\u3400-\u9fff]/.test(token) && token.length === 2 ? 3 : 5);
+				}
+				return { doc, score };
+			})
+			.filter((r) => r.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.slice(0, limit)
+			.map((r) => r.doc);
+	}
+
+	function renderDocs(hits: (Doc | { title: string; url: string; category?: string; description?: string })[]) {
+		if (!list) return;
+		list.innerHTML = '';
+		hits.forEach((doc) => {
+			const li = document.createElement('li');
+			li.className = 'palette__item';
+			li.tabIndex = -1;
+			li.dataset.href = doc.url;
+			const meta = [('date' in doc && doc.date) || '', doc.category || '', ...(('tags' in doc && doc.tags) || []).slice(0, 2)]
+				.filter(Boolean)
+				.join(' · ');
+			li.innerHTML = `
+				<span class="palette__icon">📄</span>
+				<span class="palette__text">
+					<strong></strong>
+					<em></em>
+				</span>`;
+			const strong = li.querySelector('strong');
+			const em = li.querySelector('em');
+			if (strong) strong.textContent = doc.title;
+			if (em) em.textContent = meta || ('description' in doc ? doc.description ?? '' : '');
+			list.appendChild(li);
+		});
+		empty?.toggleAttribute('hidden', hits.length > 0);
+		resultsGroup?.toggleAttribute('hidden', false);
+	}
+
+	async function runSearch(query: string) {
+		filterQuickGroup();
+		if (!query.trim()) {
+			if (list) list.innerHTML = '';
+			empty?.setAttribute('hidden', '');
+			await loadDocs();
+			reset();
+			return;
+		}
+		await loadDocs();
+		const local = localSearch(query, 10);
+		// 若 Pagefind 可用（生产构建），用它的全文结果补足
+		let merged: (Doc | { title: string; url: string; description?: string })[] = local;
+		try {
+			const pf = (window as any).__ashPagefind;
+			if (pf) {
+				const res = await pf.search(query);
+				const remote = (res.results ?? []).slice(0, 8).map((r: any) => ({
+					title: r.meta?.title ?? r.url,
+					url: r.url,
+					description: (r.excerpt ?? '').replace(/<[^>]+>/g, '').slice(0, 90),
+				}));
+				const seen = new Set(local.map((d) => d.url));
+				merged = [...local, ...remote.filter((r: { url: string }) => !seen.has(r.url))].slice(0, 12);
+			}
+		} catch {}
+		renderDocs(merged);
+		reset();
+	}
+
+	function openPalette(initial = '') {
+		if (!palette) return;
+		palette.removeAttribute('hidden');
+		document.documentElement.style.overflow = 'hidden';
+		if (input) {
+			input.value = initial;
+			setTimeout(() => input.focus(), 30);
+		}
+		runSearch(initial);
+	}
+
+	function closePalette() {
+		palette?.setAttribute('hidden', '');
+		document.documentElement.style.overflow = '';
+	}
+
+	function go(href: string) {
+		closePalette();
+		if (href) window.location.href = href;
+	}
+
+	document.querySelectorAll('[data-open-palette]').forEach((btn) => {
+		btn.addEventListener('click', () => openPalette());
+	});
+	document.querySelectorAll('[data-close-palette]').forEach((btn) => {
+		btn.addEventListener('click', closePalette);
+	});
+
+	document.addEventListener('keydown', (e) => {
+		const key = e.key.toLowerCase();
+		const isOpen = palette && !palette.hasAttribute('hidden');
+		if ((e.metaKey || e.ctrlKey) && key === 'k') {
+			e.preventDefault();
+			isOpen ? closePalette() : openPalette();
+			return;
+		}
+		if (!isOpen) {
+			const typing = /^(input|textarea|select)$/i.test((e.target as HTMLElement)?.tagName ?? '');
+			if (key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
+				e.preventDefault();
+				openPalette();
+			}
+			if (key === 'escape') return;
+			return;
+		}
+		if (key === 'escape') {
+			e.preventDefault();
+			closePalette();
+			return;
+		}
+		if (key === 'arrowdown') {
+			e.preventDefault();
+			setActive(activeIndex + 1);
+			return;
+		}
+		if (key === 'arrowup') {
+			e.preventDefault();
+			setActive(activeIndex - 1);
+			return;
+		}
+		if (key === 'enter') {
+			e.preventDefault();
+			const el = items()[activeIndex];
+			if (!el) return;
+			handleAction(el);
+		}
+	});
+
+	function handleAction(el: HTMLElement) {
+		const href = el.dataset.href;
+		const action = el.dataset.action;
+		if (action?.startsWith('theme:')) {
+			const mode = action.split(':')[1];
+			try {
+				localStorage.setItem('ash-theme', mode);
+			} catch {}
+			const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+			document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+			document.documentElement.dataset.themeMode = mode;
+			document.dispatchEvent(new CustomEvent('ash:theme', { detail: mode }));
+			closePalette();
+			return;
+		}
+		if (action === 'copy:url') {
+			navigator.clipboard?.writeText(location.href).then(() => {
+				el.querySelector('em')!.textContent = '已复制 ✓';
+				setTimeout(closePalette, 500);
+			});
+			return;
+		}
+		if (href) go(href);
+	}
+
+	palette?.addEventListener('click', (e) => {
+		const item = (e.target as HTMLElement).closest<HTMLElement>('.palette__item');
+		if (item) handleAction(item);
+	});
+	palette?.addEventListener('mousemove', (e) => {
+		const item = (e.target as HTMLElement).closest<HTMLElement>('.palette__item');
+		if (!item) return;
+		const all = items();
+		const idx = all.indexOf(item);
+		if (idx >= 0 && idx !== activeIndex) setActive(idx);
+	});
+
+	let debounceTimer: number | undefined;
+	input?.addEventListener('input', () => {
+		window.clearTimeout(debounceTimer);
+		debounceTimer = window.setTimeout(() => runSearch(input.value), 130);
+	});
+
+	// Pagefind 懒加载（只有生产构建才有这套文件）
+	let pagefindTried = false;
+	async function loadPagefind() {
+		if (pagefindTried) return;
+		pagefindTried = true;
+		try {
+			// Pagefind 的产物在构建后才存在，路径只能运行时解析
+			// @ts-expect-error 构建期不存在该模块
+			const mod = await import(/* @vite-ignore */ '/pagefind/pagefind.js');
+			await mod.init?.();
+			(window as any).__ashPagefind = mod;
+		} catch {}
+	}
+	loadPagefind();
+</script>

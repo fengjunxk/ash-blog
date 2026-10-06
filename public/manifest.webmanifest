@@ -1,0 +1,24 @@
+{
+	"name": "灰羽 · Ash",
+	"short_name": "灰羽",
+	"description": "一只有点丧、但很温柔的技术猫：前端工程、Cloudflare 与设计随笔。",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f7f3f0",
+	"theme_color": "#d99aa4",
+	"lang": "zh-CN",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		},
+		{
+			"src": "/apple-touch-icon.png",
+			"sizes": "180x180",
+			"type": "image/png"
+		}
+	]
+}

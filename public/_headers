@@ -1,0 +1,35 @@
+# 静态资源长缓存：带 hash 的构建产物可以放心永久缓存
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/pagefind/*
+  Cache-Control: public, max-age=604800
+
+/og-default.png
+  Cache-Control: public, max-age=604800
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=2592000
+
+# 索引类文件不要缓存太久，方便更新
+/rss.xml
+  Cache-Control: public, max-age=1800
+  Content-Type: application/rss+xml; charset=utf-8
+
+/search-index.json
+  Cache-Control: public, max-age=3600
+
+# 接口一律不缓存
+/api/*
+  Cache-Control: no-store
+
+/sitemap-index.xml
+  Cache-Control: public, max-age=3600
+
+# 全站安全头（与 functions/_middleware.js 一致，静态资源也覆盖到）
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
