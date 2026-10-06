@@ -1,6 +1,6 @@
 # Cloudflare Pages 配置（配合 `wrangler pages deploy dist` 或 Dashboard 部署）
 name = "ash-blog"
-compatibility_date = "2026-01-01"
+compatibility_date = "2026-08-04"
 pages_build_output_dir = "dist"
 
 # 构建环境变量（Dashboard 部署时也可以在那里设置）
